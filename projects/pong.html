@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  	<meta charset="UTF-8">
+  	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  	<title>Impongsible</title>
+  	<style>
+  	  body {
+  	  	background-color: black;
+  	  }
+  	</style>
+  </head>
+  <body>
+  	<canvas id="gameField" width="1300" height="600"></canvas>
+		<script>
+		  const gameField = document.getElementById("gameField");
+		  const ctxt = gameField.getContext("2d");
+		  let raf;
+		  let hasMoved;
+		  let mouseY;
+		  let score = 0;
+		  // replay
+		  // start button
+		  // leaderboard (for single player); autofill name after first entry
+
+		  const ball = {
+		  	x: 100,
+		  	y: 100,
+		  	vx: 15,
+		  	vy: 7,
+		  	radius: 10,
+		  	draw() {
+				  ctxt.beginPath();
+				  ctxt.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
+				  ctxt.closePath();
+				  ctxt.fillStyle = "white";
+				  ctxt.fill();
+		  	}
+		  };
+
+		  const lpad = {
+		  	x: 0,
+		  	y: 100,
+		  	width: 25,
+		  	height: 100,
+		  	draw() {
+				  ctxt.fillStyle = "red";
+				  ctxt.fillRect(this.x, this.y, this.width, this.height);
+		  	}
+		  };
+
+		  const rpad = {
+		  	x: 1275,
+		  	y: 100,
+		  	width: 25,
+		  	height: 100,
+		  	draw() {
+				  ctxt.fillStyle = "red";
+				  ctxt.fillRect(this.x, this.y, this.width, this.height);
+		  	}
+		  };
+
+		  function draw() {
+		  	ctxt.clearRect(0, 0, gameField.width, gameField.height);
+
+		  	// Show score
+		  	ctxt.font = "30px serif";
+		  	ctxt.fillStyle = "white";
+		  	ctxt.fillText("Score: " + score, 1150, 60);
+
+		  	const hitLeftPad = (ball.y >= lpad.y) && (ball.y <= lpad.y + lpad.height) && (ball.x - ball.radius <= lpad.x + lpad.width);
+		  	const hitRightPad = (ball.y >= rpad.y) && (ball.y <= rpad.y + rpad.height) && (ball.x + ball.radius >= rpad.x);
+		  	if (hitLeftPad || hitRightPad) {
+		  		ball.vx = -ball.vx;
+		  		score += 1;
+		  	}
+
+		  	// TODO: Fix ball clipping through paddle when paddle moves and ball is moving vertically.
+		  	const hitTopPad = ((ball.x - ball.radius <= lpad.x + lpad.width) && (ball.y + ball.radius >= lpad.y) && ball.y <= lpad.y) || ((ball.x + ball.radius >= rpad.x) && (ball.y + ball.radius >= rpad.y) && ball.y <= rpad.y);
+		  	const hitBotPad = ((ball.x - ball.radius <= lpad.x + lpad.width) && (ball.y - ball.radius <= lpad.y + lpad.height) && (ball.y >= lpad.y + lpad.height)) || ((ball.x + ball.radius >= rpad.x) && (ball.y - ball.radius <= rpad.y + rpad.height) && ball.y >= rpad.y + rpad.height);
+		  	if (hitTopPad || hitBotPad) {
+		  		ball.vy = -ball.vy;
+		  	}
+
+		  	if (ball.y + ball.vy > gameField.height - ball.radius ||
+		  		ball.y + ball.vy < ball.radius) {
+		  		ball.vy = -ball.vy;
+		  	}
+
+		  	if (ball.x + ball.vx > gameField.width - ball.radius) {
+		  		ctxt.font = "48px serif";
+		  		ctxt.fillStyle = "white";
+		  		ctxt.fillText("Player 1 wins!", 500, 300);
+		  		return;
+		  	}
+
+		  	if (ball.x + ball.vx < ball.radius) {
+		  		ctxt.font = "48px serif";
+		  		ctxt.fillStyle = "white";
+		  		ctxt.fillText("Player 2 wins!", 500, 300);
+		  		return;
+		  	}
+
+		  	if (hasMoved) {
+		  		lpad.y = mouseY;
+		  		rpad.y = mouseY;
+			  	hasMoved = false;
+		  	}
+
+			  ball.draw();
+			  ball.x += ball.vx;
+			  ball.y += ball.vy;
+
+			  lpad.draw();
+			  rpad.draw();
+
+		  	raf = window.requestAnimationFrame(draw);
+		  }
+
+			gameField.addEventListener("mousemove", (e) => { 
+				mouseY = e.offsetY;
+				if (mouseY <= gameField.height - lpad.height) {
+					hasMoved = true;
+				}
+			});
+
+		  draw();
+		</script>
+  </body>
+</html>
