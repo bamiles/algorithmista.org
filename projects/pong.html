@@ -20,7 +20,6 @@
 		  let mouseY;
 		  let score = 0;
 		  // replay
-		  // start button
 		  // leaderboard (for single player); autofill name after first entry
 
 		  const ball = {
@@ -58,12 +57,27 @@
 				  ctxt.fillStyle = "red";
 				  ctxt.fillRect(this.x, this.y, this.width, this.height);
 		  	}
-		  };
+		  }
 
+		  const startButton = {
+		  	x: 595,
+		  	y: 300,
+		  	width: 150,
+		  	height: 75,
+		  	draw() {
+		  		ctxt.strokeStyle = "white";
+		  		ctxt.strokeRect(this.x, this.y, this.width, this.height);
+		  		ctxt.font = "30px serif";
+		  		ctxt.fillStyle = "white";
+		  		ctxt.fillText("Play", this.x + 50, this.y + 45);
+		  	}
+		  }
+
+		  // Displays game
 		  function draw() {
 		  	ctxt.clearRect(0, 0, gameField.width, gameField.height);
 
-		  	// Show score
+		  	// Draw score
 		  	ctxt.font = "30px serif";
 		  	ctxt.fillStyle = "white";
 		  	ctxt.fillText("Score: " + score, 1150, 60);
@@ -117,14 +131,32 @@
 		  	raf = window.requestAnimationFrame(draw);
 		  }
 
-			gameField.addEventListener("mousemove", (e) => { 
-				mouseY = e.offsetY;
-				if (mouseY <= gameField.height - lpad.height) {
-					hasMoved = true;
-				}
-			});
+		  // Controls start screen
+		  function start() {
+		  	gameField.addEventListener("click", (e) => {
+		  		mouseX = e.offsetX;
+		  		mouseY = e.offsetY;
+		  		if (mouseX >= startButton.x &&
+		  				mouseX <= startButton.x + startButton.width &&
+		  				mouseY >= startButton.y &&
+		  				mouseY <= startButton.y + startButton.height) {
+						gameField.addEventListener("mousemove", (e) => { 
+							mouseY = e.offsetY;
+							if (mouseY <= gameField.height - lpad.height) {
+								hasMoved = true;
+							}
+						});
+		  			draw();
+		  		}
+		  	}, { once: true });
 
-		  draw();
+		  	ctxt.font = "48px serif";
+		  	ctxt.fillStyle = "white";
+		  	ctxt.fillText("Impongsible", 550, 250);
+		  	startButton.draw();
+		  }
+
+		  start();
 		</script>
   </body>
 </html>
