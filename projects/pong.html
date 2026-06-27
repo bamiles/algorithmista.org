@@ -19,6 +19,8 @@
 		  let hasMoved;
 		  let mouseY;
 		  let score = 0;
+		  let isPaused;
+		  let started;
 		  // replay
 		  // leaderboard (for single player); autofill name after first entry
 
@@ -71,6 +73,44 @@
 		  		ctxt.fillStyle = "white";
 		  		ctxt.fillText("Play", this.x + 50, this.y + 45);
 		  	}
+		  }
+
+		  const continueButton = {
+		  	x: 595,
+		  	y: 300,
+		  	width: 150,
+		  	height: 75,
+		  	draw() {
+		  		ctxt.strokeStyle = "white";
+		  		ctxt.strokeRect(this.x, this.y, this.width, this.height);
+		  		ctxt.font = "30px serif";
+		  		ctxt.fillStyle = "white";
+		  		ctxt.fillText("Continue", this.x + 25, this.y + 45);
+		  	}
+		  }
+
+		  function unpause(e) {
+		  	mouseX = e.offsetX;
+		  	mouseY = e.offsetY;
+		  	if (mouseX >= continueButton.x &&
+		  			mouseX <= continueButton.x + continueButton.width &&
+		  			mouseY >= continueButton.y &&
+		  			mouseY <= continueButton.y + continueButton.height) {
+		  		isPaused = false;
+		  		e.currentTarget.removeEventListener("click", unpause);
+		  		draw();
+		  	}
+		  }
+
+		  function pause() {
+		  	// Draw pause message box (semi-transparent box)
+		  	ctxt.font = "48px serif";
+		  	ctxt.fillStyle = "white";
+		  	ctxt.fillText("Paused", 600, 250);
+
+		  	// Draw "Continue" button
+		  	gameField.addEventListener("click", unpause);
+		  	continueButton.draw();
 		  }
 
 		  // Displays game
@@ -128,27 +168,41 @@
 			  lpad.draw();
 			  rpad.draw();
 
-		  	raf = window.requestAnimationFrame(draw);
+		  	if (!isPaused) {
+		  		raf = window.requestAnimationFrame(draw);
+		  	} else {
+		  		pause();
+		  	}
+		  }
+
+		  function start(e) {
+		  	mouseX = e.offsetX;
+		  	mouseY = e.offsetY;
+		  	if (mouseX >= startButton.x &&
+		  			mouseX <= startButton.x + startButton.width &&
+		  			mouseY >= startButton.y &&
+		  			mouseY <= startButton.y + startButton.height) {
+					gameField.addEventListener("mousemove", (e) => { 
+						mouseY = e.offsetY;
+						if (mouseY <= gameField.height - lpad.height) {
+							hasMoved = true;
+						}
+					});
+					e.currentTarget.removeEventListener("click", start);
+					started = true;
+		  		draw();
+		  	}
 		  }
 
 		  // Controls start screen
-		  function start() {
-		  	gameField.addEventListener("click", (e) => {
-		  		mouseX = e.offsetX;
-		  		mouseY = e.offsetY;
-		  		if (mouseX >= startButton.x &&
-		  				mouseX <= startButton.x + startButton.width &&
-		  				mouseY >= startButton.y &&
-		  				mouseY <= startButton.y + startButton.height) {
-						gameField.addEventListener("mousemove", (e) => { 
-							mouseY = e.offsetY;
-							if (mouseY <= gameField.height - lpad.height) {
-								hasMoved = true;
-							}
-						});
-		  			draw();
+		  function init() {
+		  	gameField.addEventListener("click", start);
+
+		  	document.addEventListener("keydown", (e) => {
+		  		if (e.key == "Escape" && started) {
+		  			isPaused = true;
 		  		}
-		  	}, { once: true });
+		  	});
 
 		  	ctxt.font = "48px serif";
 		  	ctxt.fillStyle = "white";
@@ -156,7 +210,7 @@
 		  	startButton.draw();
 		  }
 
-		  start();
+		  init();
 		</script>
   </body>
 </html>
