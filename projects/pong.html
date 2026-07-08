@@ -21,28 +21,25 @@
 		  let score = 0;
 		  let isPaused;
 		  let started;
-		  // replay
-		  // leaderboard (for single player); autofill name after first entry
-		  // On unpause, make player "catch" the paddles by moving their
-		  // mouse back to where paddles are. This prevents unnatural
-		  // jumps by the paddles.
+		  let secLeft = 3;
+		  let lastTime;
 
 		  const ball = {
 		  	initX: 100,
 		  	initY: 100,
-		  	initVx: 15,
-		  	initVy: 7,
+		  	initVx: 10,
+		  	initVy: 5,
 		  	x: this.initX,
 		  	y: this.initY,
 		  	vx: this.initVx,
 		  	vy: this.initVy,
 		  	radius: 10,
 		  	draw() {
-				  ctxt.beginPath();
-				  ctxt.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
-				  ctxt.closePath();
-				  ctxt.fillStyle = "white";
-				  ctxt.fill();
+				ctxt.beginPath();
+				ctxt.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
+				ctxt.closePath();
+				ctxt.fillStyle = "white";
+				ctxt.fill();
 		  	}
 		  };
 
@@ -54,8 +51,8 @@
 		  	width: 25,
 		  	height: 100,
 		  	draw() {
-				  ctxt.fillStyle = "red";
-				  ctxt.fillRect(this.x, this.y, this.width, this.height);
+				ctxt.fillStyle = "red";
+				ctxt.fillRect(this.x, this.y, this.width, this.height);
 		  	}
 		  };
 
@@ -67,8 +64,8 @@
 		  	width: 25,
 		  	height: 100,
 		  	draw() {
-				  ctxt.fillStyle = "red";
-				  ctxt.fillRect(this.x, this.y, this.width, this.height);
+				ctxt.fillStyle = "red";
+				txt.fillRect(this.x, this.y, this.width, this.height);
 		  	}
 		  }
 
@@ -136,8 +133,9 @@
 		  			mouseY >= endRestartButton.y &&
 		  			mouseY <= endRestartButton.y + endRestartButton.height) {
 		  		isPaused = false;
-		  		started = true;
+		  		lastTime = null;
 		  		score = 0;
+		  		secLeft = 3;
 		  		ball.x = ball.initX;
 		  		ball.y = ball.initY;
 		  		ball.vx = ball.initVx;
@@ -172,8 +170,10 @@
 		  			mouseY >= restartButton.y &&
 		  			mouseY <= restartButton.y + restartButton.height) {
 		  		isPaused = false;
-		  		started = true;
+		  		started = false;
+		  		lastTime = null;
 		  		score = 0;
+		  		secLeft = 3;
 		  		ball.x = ball.initX;
 		  		ball.y = ball.initY;
 		  		ball.vx = ball.initVx;
@@ -196,7 +196,7 @@
 		  			mouseY <= continueButton.y + continueButton.height) {
 		  		isPaused = false;
 		  		e.currentTarget.removeEventListener("click", unpause);
-		  		draw();
+		  		raf = requestAnimationFrame(draw);
 		  	}
 		  }
 
@@ -213,6 +213,29 @@
 		  	// Draw "Restart" button
 		  	gameField.addEventListener("click", restart);
 		  	restartButton.draw();
+		  }
+
+		  function countdown(timestamp) {
+		  	if (!lastTime) { lastTime = timestamp; }
+
+			ctxt.font = "60px serif";
+			ctxt.fillStyle = "white";
+			ctxt.clearRect(600, 250, 100, 100);
+			ctxt.fillText(secLeft, 650, 300);
+
+		  	const elapsed = timestamp - lastTime;
+
+		  	if (elapsed >= 1000) {
+		  		secLeft -= 1;
+		  		lastTime = timestamp;
+		  	}
+
+			if (secLeft == 0) {
+				started = true;
+				raf = requestAnimationFrame(draw);
+			} else {
+				raf = requestAnimationFrame(countdown);
+			}
 		  }
 
 		  // Displays game
@@ -264,13 +287,19 @@
 			  lpad.draw();
 			  rpad.draw();
 
+			  // Countdown timer
+		  	if (secLeft > 0) {
+		  		raf = requestAnimationFrame(countdown);
+		  	}
+
 		  	if (!isPaused && started) {
-		  		raf = window.requestAnimationFrame(draw);
+		  		raf = requestAnimationFrame(draw);
 		  	} 
 		  	if (isPaused) {
 		  		pause();
 		  	}
 		  }
+
 
 		  function start(e) {
 		  	mouseX = e.offsetX;
@@ -279,13 +308,12 @@
 		  			mouseX <= startButton.x + startButton.width &&
 		  			mouseY >= startButton.y &&
 		  			mouseY <= startButton.y + startButton.height) {
-					gameField.addEventListener("mousemove", (e) => { 
+					gameField.addEventListener("mousemove", (e) => {
 						mouseY = e.offsetY;
 						if (mouseY <= gameField.height - lpad.height) {
 							hasMoved = true;
 						}
 					});
-					started = true;
 		  		ball.x = ball.initX;
 		  		ball.y = ball.initY;
 		  		ball.vx = ball.initVx;
@@ -294,8 +322,8 @@
 		  		lpad.y = lpad.initY;
 		  		rpad.x = rpad.initX;
 		  		rpad.y = rpad.initY;
-					e.currentTarget.removeEventListener("click", start);
-		  		draw();
+				e.currentTarget.removeEventListener("click", start);
+				draw();
 		  	}
 		  }
 
