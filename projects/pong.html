@@ -35,11 +35,11 @@
 		  	vy: this.initVy,
 		  	radius: 10,
 		  	draw() {
-				ctxt.beginPath();
-				ctxt.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
-				ctxt.closePath();
-				ctxt.fillStyle = "white";
-				ctxt.fill();
+				  ctxt.beginPath();
+				  ctxt.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
+				  ctxt.closePath();
+				  ctxt.fillStyle = "white";
+				  ctxt.fill();
 		  	}
 		  };
 
@@ -51,8 +51,8 @@
 		  	width: 25,
 		  	height: 100,
 		  	draw() {
-				ctxt.fillStyle = "red";
-				ctxt.fillRect(this.x, this.y, this.width, this.height);
+				  ctxt.fillStyle = "red";
+				  ctxt.fillRect(this.x, this.y, this.width, this.height);
 		  	}
 		  };
 
@@ -64,8 +64,8 @@
 		  	width: 25,
 		  	height: 100,
 		  	draw() {
-				ctxt.fillStyle = "red";
-				txt.fillRect(this.x, this.y, this.width, this.height);
+				  ctxt.fillStyle = "red";
+				  ctxt.fillRect(this.x, this.y, this.width, this.height);
 		  	}
 		  }
 
@@ -218,10 +218,10 @@
 		  function countdown(timestamp) {
 		  	if (!lastTime) { lastTime = timestamp; }
 
-			ctxt.font = "60px serif";
-			ctxt.fillStyle = "white";
-			ctxt.clearRect(600, 250, 100, 100);
-			ctxt.fillText(secLeft, 650, 300);
+				ctxt.font = "60px serif";
+				ctxt.fillStyle = "white";
+				ctxt.clearRect(600, 250, 100, 100);
+				ctxt.fillText(secLeft, 650, 300);
 
 		  	const elapsed = timestamp - lastTime;
 
@@ -230,12 +230,12 @@
 		  		lastTime = timestamp;
 		  	}
 
-			if (secLeft == 0) {
-				started = true;
-				raf = requestAnimationFrame(draw);
-			} else {
-				raf = requestAnimationFrame(countdown);
-			}
+				if (secLeft == 0) {
+					started = true;
+					raf = requestAnimationFrame(draw);
+				} else {
+					raf = requestAnimationFrame(countdown);
+				}
 		  }
 
 		  // Displays game
@@ -322,8 +322,8 @@
 		  		lpad.y = lpad.initY;
 		  		rpad.x = rpad.initX;
 		  		rpad.y = rpad.initY;
-				e.currentTarget.removeEventListener("click", start);
-				draw();
+					e.currentTarget.removeEventListener("click", start);
+					draw();
 		  	}
 		  }
 
