@@ -49,7 +49,7 @@
 		  	x: this.initX,
 		  	y: this.initY,
 		  	width: 25,
-		  	height: 100,
+		  	height: 150,
 		  	draw() {
 				  ctxt.fillStyle = "red";
 				  ctxt.fillRect(this.x, this.y, this.width, this.height);
@@ -62,7 +62,7 @@
 		  	x: this.initX,
 		  	y: this.initY,
 		  	width: 25,
-		  	height: 100,
+		  	height: 150,
 		  	draw() {
 				  ctxt.fillStyle = "red";
 				  ctxt.fillRect(this.x, this.y, this.width, this.height);
@@ -247,11 +247,18 @@
 		  	ctxt.fillStyle = "white";
 		  	ctxt.fillText("Score: " + score, 1150, 60);
 
-		  	const hitLeftPad = (ball.y >= lpad.y) && (ball.y <= lpad.y + lpad.height) && (ball.x - ball.radius <= lpad.x + lpad.width);
-		  	const hitRightPad = (ball.y >= rpad.y) && (ball.y <= rpad.y + rpad.height) && (ball.x + ball.radius >= rpad.x);
+		  	const hitLeftPad = (ball.y + ball.vy >= lpad.y) && (ball.y + ball.vy <= lpad.y + lpad.height) && (ball.x - ball.radius + ball.vx <= lpad.x + lpad.width);
+		  	const hitRightPad = (ball.y + ball.vy >= rpad.y) && (ball.y + ball.vy <= rpad.y + rpad.height) && (ball.x + ball.radius + ball.vx >= rpad.x);
 		  	if (hitLeftPad || hitRightPad) {
 		  		ball.vx = -ball.vx;
+		  		ball.vy = ball.vy;
 		  		score += 1;
+
+			  	if (score % 10 == 0 && score >= 10 && score <= 50) {
+			  		// Increase speed
+			  		ball.vx += 1;
+			  		ball.vy += 0.5;
+			  	}
 		  	}
 
 		  	// TODO: Fix ball clipping through paddle when paddle moves and ball is moving vertically.
