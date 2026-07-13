@@ -183,6 +183,7 @@
 		  		rpad.x = rpad.initX;
 		  		rpad.y = rpad.initY;
 		  		e.currentTarget.removeEventListener("click", restart);
+		  		e.currentTarget.removeEventListener("click", unpause);
 		  		draw();
 		  	}
 		  }
@@ -196,7 +197,8 @@
 		  			mouseY <= continueButton.y + continueButton.height) {
 		  		isPaused = false;
 		  		e.currentTarget.removeEventListener("click", unpause);
-		  		raf = requestAnimationFrame(draw);
+		  		e.currentTarget.removeEventListener("click", restart);
+		  		draw();
 		  	}
 		  }
 
@@ -232,7 +234,7 @@
 
 				if (secLeft == 0) {
 					started = true;
-					raf = requestAnimationFrame(draw);
+					draw();
 				} else {
 					raf = requestAnimationFrame(countdown);
 				}
@@ -249,6 +251,7 @@
 
 		  	const hitLeftPad = (ball.y + ball.vy >= lpad.y) && (ball.y + ball.vy <= lpad.y + lpad.height) && (ball.x - ball.radius + ball.vx <= lpad.x + lpad.width);
 		  	const hitRightPad = (ball.y + ball.vy >= rpad.y) && (ball.y + ball.vy <= rpad.y + rpad.height) && (ball.x + ball.radius + ball.vx >= rpad.x);
+
 		  	if (hitLeftPad || hitRightPad) {
 		  		ball.vx = -ball.vx;
 		  		ball.vy = ball.vy;
@@ -264,6 +267,7 @@
 		  	// TODO: Fix ball clipping through paddle when paddle moves and ball is moving vertically.
 		  	const hitTopPad = ((ball.x - ball.radius <= lpad.x + lpad.width) && (ball.y + ball.radius >= lpad.y) && ball.y <= lpad.y) || ((ball.x + ball.radius >= rpad.x) && (ball.y + ball.radius >= rpad.y) && ball.y <= rpad.y);
 		  	const hitBotPad = ((ball.x - ball.radius <= lpad.x + lpad.width) && (ball.y - ball.radius <= lpad.y + lpad.height) && (ball.y >= lpad.y + lpad.height)) || ((ball.x + ball.radius >= rpad.x) && (ball.y - ball.radius <= rpad.y + rpad.height) && ball.y >= rpad.y + rpad.height);
+
 		  	if (hitTopPad || hitBotPad) {
 		  		ball.vy = -ball.vy;
 		  	}
@@ -296,12 +300,13 @@
 
 			  // Countdown timer
 		  	if (secLeft > 0) {
-		  		raf = requestAnimationFrame(countdown);
+		  		countdown();
 		  	}
 
 		  	if (!isPaused && started) {
 		  		raf = requestAnimationFrame(draw);
-		  	} 
+		  	}
+
 		  	if (isPaused) {
 		  		pause();
 		  	}
