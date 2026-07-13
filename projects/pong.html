@@ -244,6 +244,24 @@
 		  function draw() {
 		  	ctxt.clearRect(0, 0, gameField.width, gameField.height);
 
+		  	// Draw top border
+		  	ctxt.beginPath();
+		  	ctxt.moveTo(0, 0);
+		  	ctxt.lineTo(gameField.width, 0);
+		  	ctxt.stroke();
+		  	// Draw bottom border
+		  	ctxt.beginPath();
+		  	ctxt.moveTo(0, gameField.height);
+		  	ctxt.lineTo(gameField.width, gameField.height);
+		  	ctxt.stroke();
+		  	// Draw middle
+		  	ctxt.beginPath();
+		  	for (i = 0; i < 100; i++) {
+		  		ctxt.moveTo(650, 6*i + 1.5);
+		  		ctxt.lineTo(650, 6*i + 4.5);
+		  	}
+		  	ctxt.stroke();
+
 		  	// Draw score
 		  	ctxt.font = "30px serif";
 		  	ctxt.fillStyle = "white";
