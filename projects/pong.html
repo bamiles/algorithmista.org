@@ -15,135 +15,191 @@
 		<script>
 		  const gameField = document.getElementById("gameField");
 		  const ctxt = gameField.getContext("2d");
-		  let raf;
-		  let hasMoved;
-		  let mouseY;
 		  let score = 0;
+		  let secLeft = 3;
+		  let balls;
+		  let paddles;
+		  let raf;
 		  let isPaused;
 		  let started;
-		  let secLeft = 3;
 		  let lastTime;
 
-		  const ball = {
-		  	initX: 100,
-		  	initY: 100,
-		  	initVx: 10,
-		  	initVy: 5,
-		  	x: this.initX,
-		  	y: this.initY,
-		  	vx: this.initVx,
-		  	vy: this.initVy,
-		  	radius: 10,
+		  class Ball {
+		  	static radius = 10;
+
+		  	#x;
+		  	#y;
+		  	#vx;
+		  	#vy;
+
+		  	constructor(initX, initY, initVx, initVy) {
+			  	this.#x = initX;
+			  	this.#y = initY;
+			  	this.#vx = initVx;
+			  	this.#vy = initVy;
+		  	}
+
+		  	getX() {
+		  		return this.#x;
+		  	}
+
+		  	getY() {
+		  		return this.#y;
+		  	}
+
+		  	getVx() {
+		  		return this.#vx;
+		  	}
+
+		  	getVy() {
+		  		return this.#vy;
+		  	}
+
+		  	setVx(vx) {
+		  		this.#vx = vx;
+		  	}
+
+		  	setVy(vy) {
+		  		this.#vy = vy;
+		  	}
+
 		  	draw() {
 				  ctxt.beginPath();
-				  ctxt.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
+				  ctxt.arc(this.#x, this.#y, Ball.radius, 0, Math.PI*2, true);
 				  ctxt.closePath();
 				  ctxt.fillStyle = "white";
 				  ctxt.fill();
 		  	}
-		  };
 
-		  const lpad = {
-		  	initX: 0,
-		  	initY: 100,
-		  	x: this.initX,
-		  	y: this.initY,
-		  	width: 25,
-		  	height: 150,
+		  	move() {
+		  		this.#x += this.#vx;
+		  		this.#y += this.#vy;
+		  	}
+		  }
+
+		  class Button {
+		  	#x;
+		  	#y;
+		  	#width;
+		  	#height;
+
+		  	constructor(x, y, width, height) {
+		  		this.#x = x;
+		  		this.#y = y;
+		  		this.#width = width;
+		  		this.#height = height;
+		  	}
+
+		  	getX() {
+		  		return this.#x;
+		  	}
+
+		  	getY() {
+		  		return this.#y;
+		  	}
+
+		  	getWidth() {
+		  		return this.#width;
+		  	}
+
+		  	getHeight() {
+		  		return this.#height;
+		  	}
+
+		  	draw(text, font, offsetX, offsetY) {
+		  		ctxt.strokeStyle = "white";
+		  		ctxt.strokeRect(this.#x, this.#y, this.#width, this.#height);
+		  		ctxt.font = font;
+		  		ctxt.fillStyle = "white";
+		  		ctxt.fillText(text, this.#x + offsetX, this.#y + offsetY);
+		  	}
+		  }
+
+		  class Paddle {
+		  	static #vy = 9;
+
+		  	#x;
+		  	#y;
+		  	#width;
+		  	#height;
+		  	#up;
+		  	#down;
+
+		  	constructor(x, y, width, height) {
+		  		this.#x = x;
+		  		this.#y = y;
+		  		this.#width = width;
+		  		this.#height = height;
+		  	}
+
+		  	getX() {
+		  		return this.#x;
+		  	}
+
+		  	getY() {
+		  		return this.#y;
+		  	}
+
+		  	getWidth() {
+		  		return this.#width;
+		  	}
+
+		  	getHeight() {
+		  		return this.#height;
+		  	}
+
+		  	registerKeys(upKey, downKey) {
+					document.addEventListener("keydown", (e) => {
+						if (e.key == upKey && started) {
+							this.#up = true;
+						}
+						if (e.key == downKey && started) {
+							this.#down = true;
+						}
+					});
+
+					document.addEventListener("keyup", (e) => {
+						if (e.key == upKey && started) {
+							this.#up = false;
+						}
+						if (e.key == downKey && started) {
+							this.#down = false;
+						}
+					});
+		  	}
+
 		  	draw() {
 				  ctxt.fillStyle = "red";
-				  ctxt.fillRect(this.x, this.y, this.width, this.height);
+				  ctxt.fillRect(this.#x, this.#y, this.#width, this.#height);
 		  	}
-		  };
 
-		  const rpad = {
-		  	initX: 1275,
-		  	initY: 100,
-		  	x: this.initX,
-		  	y: this.initY,
-		  	width: 25,
-		  	height: 150,
-		  	draw() {
-				  ctxt.fillStyle = "red";
-				  ctxt.fillRect(this.x, this.y, this.width, this.height);
-		  	}
-		  }
-
-		  const startButton = {
-		  	x: 595,
-		  	y: 300,
-		  	width: 150,
-		  	height: 75,
-		  	draw() {
-		  		ctxt.strokeStyle = "white";
-		  		ctxt.strokeRect(this.x, this.y, this.width, this.height);
-		  		ctxt.font = "30px serif";
-		  		ctxt.fillStyle = "white";
-		  		ctxt.fillText("Play", this.x + 50, this.y + 45);
-		  	}
-		  }
-
-		  const continueButton = {
-		  	x: 675,
-		  	y: 300,
-		  	width: 150,
-		  	height: 75,
-		  	draw() {
-		  		ctxt.strokeStyle = "white";
-		  		ctxt.strokeRect(this.x, this.y, this.width, this.height);
-		  		ctxt.font = "30px serif";
-		  		ctxt.fillStyle = "white";
-		  		ctxt.fillText("Continue", this.x + 25, this.y + 45);
-		  	}
-		  }
-
-		  const restartButton = {
-		  	x: 500,
-		  	y: 300,
-		  	width: 150,
-		  	height: 75,
-		  	draw() {
-		  		ctxt.strokeStyle = "white";
-		  		ctxt.strokeRect(this.x, this.y, this.width, this.height);
-		  		ctxt.font = "30px serif";
-		  		ctxt.fillStyle = "white";
-		  		ctxt.fillText("Restart", this.x + 35, this.y + 45);
-		  	}
-		  }
-
-		  const endRestartButton = {
-		  	x: 550,
-		  	y: 300,
-		  	width: 150,
-		  	height: 75,
-		  	draw() {
-		  		ctxt.strokeStyle = "white";
-		  		ctxt.strokeRect(this.x, this.y, this.width, this.height);
-		  		ctxt.font = "30px serif";
-		  		ctxt.fillStyle = "white";
-		  		ctxt.fillText("Restart", this.x + 35, this.y + 45);
+		  	move() {
+		  		if (this.#up && this.#y >= Paddle.#vy) {
+		  			this.#y -= Paddle.#vy;
+		  		}
+		  		if (this.#down && this.#y + this.#height <= gameField.height - Paddle.#vy) {
+		  			this.#y += Paddle.#vy;
+		  		}
 		  	}
 		  }
 
 		  function endRestart(e) {
 		  	mouseX = e.offsetX;
 		  	mouseY = e.offsetY;
-		  	if (mouseX >= endRestartButton.x &&
-		  			mouseX <= endRestartButton.x + endRestartButton.width &&
-		  			mouseY >= endRestartButton.y &&
-		  			mouseY <= endRestartButton.y + endRestartButton.height) {
+		  	if (mouseX >= endRestartButton.getX() &&
+		  			mouseX <= endRestartButton.getX() + endRestartButton.getWidth() &&
+		  			mouseY >= endRestartButton.getY() &&
+		  			mouseY <= endRestartButton.getY() + endRestartButton.getHeight()) {
 		  		isPaused = false;
 		  		lastTime = null;
 		  		score = 0;
 		  		secLeft = 3;
-		  		ball.x = ball.initX;
-		  		ball.y = ball.initY;
-		  		ball.vx = ball.initVx;
-		  		ball.vy = ball.initVy;
-		  		lpad.x = lpad.initX;
-		  		lpad.y = lpad.initY;
-		  		rpad.x = rpad.initX;
-		  		rpad.y = rpad.initY;
+		  		balls = [new Ball(100, 100, 10, 5)];
+					leftPad = new Paddle(0, 100, 25, 150);
+		  		rightPad = new Paddle(1275, 100, 25, 150);
+		  		leftPad.registerKeys("q", "a");
+		  		rightPad.registerKeys("p", "l");
+		  		paddles = [leftPad, rightPad];
 		  		e.currentTarget.removeEventListener("click", endRestart);
 		  		draw();
 		  	}
@@ -159,29 +215,28 @@
 		  		ctxt.fillText("Player 2 wins!", 500, 250);
 		  	}
 		  	gameField.addEventListener("click", endRestart);
-		  	endRestartButton.draw();
+		  	endRestartButton = new Button(550, 300, 150, 75);
+		  	endRestartButton.draw("Restart", "30px serif", 35, 45);
 		  }
 
 		  function restart(e) {
 		  	mouseX = e.offsetX;
 		  	mouseY = e.offsetY;
-		  	if (mouseX >= restartButton.x &&
-		  			mouseX <= restartButton.x + restartButton.width &&
-		  			mouseY >= restartButton.y &&
-		  			mouseY <= restartButton.y + restartButton.height) {
+		  	if (mouseX >= restartButton.getX() &&
+		  			mouseX <= restartButton.getX() + restartButton.getWidth() &&
+		  			mouseY >= restartButton.getY() &&
+		  			mouseY <= restartButton.getY() + restartButton.getHeight()) {
 		  		isPaused = false;
 		  		started = false;
 		  		lastTime = null;
 		  		score = 0;
 		  		secLeft = 3;
-		  		ball.x = ball.initX;
-		  		ball.y = ball.initY;
-		  		ball.vx = ball.initVx;
-		  		ball.vy = ball.initVy;
-		  		lpad.x = lpad.initX;
-		  		lpad.y = lpad.initY;
-		  		rpad.x = rpad.initX;
-		  		rpad.y = rpad.initY;
+		  		balls = [new Ball(100, 100, 10, 5)];
+					leftPad = new Paddle(0, 100, 25, 150);
+		  		rightPad = new Paddle(1275, 100, 25, 150);
+		  		leftPad.registerKeys("q", "a");
+		  		rightPad.registerKeys("p", "l");
+		  		paddles = [leftPad, rightPad];
 		  		e.currentTarget.removeEventListener("click", restart);
 		  		e.currentTarget.removeEventListener("click", unpause);
 		  		draw();
@@ -191,10 +246,10 @@
 		  function unpause(e) {
 		  	mouseX = e.offsetX;
 		  	mouseY = e.offsetY;
-		  	if (mouseX >= continueButton.x &&
-		  			mouseX <= continueButton.x + continueButton.width &&
-		  			mouseY >= continueButton.y &&
-		  			mouseY <= continueButton.y + continueButton.height) {
+		  	if (mouseX >= continueButton.getX() &&
+		  			mouseX <= continueButton.getX() + continueButton.getWidth() &&
+		  			mouseY >= continueButton.getY() &&
+		  			mouseY <= continueButton.getY() + continueButton.getHeight()) {
 		  		isPaused = false;
 		  		e.currentTarget.removeEventListener("click", unpause);
 		  		e.currentTarget.removeEventListener("click", restart);
@@ -210,11 +265,13 @@
 
 		  	// Draw "Continue" button
 		  	gameField.addEventListener("click", unpause);
-		  	continueButton.draw();
+		  	continueButton = new Button(675, 300, 150, 75);
+		  	continueButton.draw("Continue", "30px serif", 25, 45);
 
 		  	// Draw "Restart" button
 		  	gameField.addEventListener("click", restart);
-		  	restartButton.draw();
+		  	restartButton = new Button(500, 300, 150, 75);
+		  	restartButton.draw("Restart", "30px serif", 35, 45);
 		  }
 
 		  function countdown(timestamp) {
@@ -240,6 +297,57 @@
 				}
 		  }
 
+		  function handleCollision(ball) {
+		  	const ballX = ball.getX();
+		  	const ballY = ball.getY();
+		  	var ballVx = ball.getVx();
+		  	var ballVy = ball.getVy();
+
+		  	const leftPadX = paddles[0].getX();
+		  	const leftPadY = paddles[0].getY();
+		  	const rightPadX = paddles[1].getX();
+		  	const rightPadY = paddles[1].getY();
+		  	const padWidth = paddles[0].getWidth();
+		  	const padHeight = paddles[0].getHeight();
+
+		  	const hitLeftPad = ballY + ballVy >= leftPadY &&
+		  										ballY + ballVy <= leftPadY + padHeight &&
+		  										ballX - Ball.radius + ballVx <= leftPadX + padWidth;
+		  	const hitRightPad = ballY + ballVy >= rightPadY &&
+		  										ballY + ballVy <= rightPadY + padHeight &&
+		  										ballX + Ball.radius + ballVx >= rightPadX;
+		  	const hitTopPad = (ballX - Ball.radius <= leftPadX + padWidth && ballY + Ball.radius >= leftPadY && ballY <= leftPadY) ||
+		  										(ballX + Ball.radius >= rightPadX && ballY + Ball.radius >= rightPadY && ballY <= rightPadY);
+		  	const hitBotPad = (ballX - Ball.radius <= leftPadX + padWidth && ballY - Ball.radius <= leftPadY + padHeight && ballY >= leftPadY + padHeight) ||
+		  										(ballX + Ball.radius >= rightPadX && ballY - Ball.radius <= rightPadY + padHeight && ballY >= rightPadY + padHeight);
+
+			  if (hitLeftPad || hitRightPad) {
+			  	ball.setVx(-ballVx);
+			  	ball.setVy(ballVy);
+			  	ballVx = ball.getVx();
+			  	ballVy = ball.getVy();
+			  	score += 1;
+
+				  if (score % 10 == 0 && score >= 10 && score <= 50) {
+				  	// Increase speed
+				  	ball.setVx(ballVx * 1.05);
+				  	ball.setVy(ballVy * 1.05);
+				  	ballVx = ball.getVx();
+				  	ballVy = ball.getVy();
+				  }
+			  }
+
+			  // TODO: Fix ball clipping through paddle when paddle moves and ball is moving vertically.
+			  if (hitTopPad || hitBotPad) {
+			  	ball.setVy(-ballVy);
+				  ballVy = ball.getVy();
+			  }
+
+			  if (ballY + ballVy > gameField.height - Ball.radius || ballY + ballVy < Ball.radius) {
+			  	ball.setVy(-ballVy);
+			  }
+		  }
+
 		  // Displays game
 		  function draw() {
 		  	ctxt.clearRect(0, 0, gameField.width, gameField.height);
@@ -254,7 +362,7 @@
 		  	ctxt.moveTo(0, gameField.height);
 		  	ctxt.lineTo(gameField.width, gameField.height);
 		  	ctxt.stroke();
-		  	// Draw middle
+		  	// Draw "net"
 		  	ctxt.beginPath();
 		  	for (i = 0; i < 100; i++) {
 		  		ctxt.moveTo(650, 6*i + 1.5);
@@ -267,54 +375,22 @@
 		  	ctxt.fillStyle = "white";
 		  	ctxt.fillText("Score: " + score, 1150, 60);
 
-		  	const hitLeftPad = (ball.y + ball.vy >= lpad.y) && (ball.y + ball.vy <= lpad.y + lpad.height) && (ball.x - ball.radius + ball.vx <= lpad.x + lpad.width);
-		  	const hitRightPad = (ball.y + ball.vy >= rpad.y) && (ball.y + ball.vy <= rpad.y + rpad.height) && (ball.x + ball.radius + ball.vx >= rpad.x);
-
-		  	if (hitLeftPad || hitRightPad) {
-		  		ball.vx = -ball.vx;
-		  		ball.vy = ball.vy;
-		  		score += 1;
-
-			  	if (score % 10 == 0 && score >= 10 && score <= 50) {
-			  		// Increase speed
-			  		ball.vx += 1;
-			  		ball.vy += 0.5;
-			  	}
+		  	for (const ball of balls) {
+		  		handleCollision(ball);
+		  		ball.draw(ctxt);
+		  		ball.move();
+				  if (ball.getX() - Ball.radius > gameField.width) {
+				  	end(0); // Player 1 wins
+				  }
+				  if (ball.getX() < -Ball.radius) {
+				  	end(1); // Player 2 wins
+				  }
 		  	}
 
-		  	// TODO: Fix ball clipping through paddle when paddle moves and ball is moving vertically.
-		  	const hitTopPad = ((ball.x - ball.radius <= lpad.x + lpad.width) && (ball.y + ball.radius >= lpad.y) && ball.y <= lpad.y) || ((ball.x + ball.radius >= rpad.x) && (ball.y + ball.radius >= rpad.y) && ball.y <= rpad.y);
-		  	const hitBotPad = ((ball.x - ball.radius <= lpad.x + lpad.width) && (ball.y - ball.radius <= lpad.y + lpad.height) && (ball.y >= lpad.y + lpad.height)) || ((ball.x + ball.radius >= rpad.x) && (ball.y - ball.radius <= rpad.y + rpad.height) && ball.y >= rpad.y + rpad.height);
-
-		  	if (hitTopPad || hitBotPad) {
-		  		ball.vy = -ball.vy;
+		  	for (const paddle of paddles) {
+		  		paddle.draw(ctxt);
+		  		paddle.move();
 		  	}
-
-		  	if (ball.y + ball.vy > gameField.height - ball.radius ||
-		  		ball.y + ball.vy < ball.radius) {
-		  		ball.vy = -ball.vy;
-		  	}
-
-		  	if (ball.x - ball.vx > gameField.width - ball.radius) {
-		  		end(0); // Player 1 wins
-		  	}
-
-		  	if (ball.x - ball.vx < ball.radius) {
-		  		end(1); // Player 2 wins
-		  	}
-
-		  	if (hasMoved) {
-		  		lpad.y = mouseY;
-		  		rpad.y = mouseY;
-			  	hasMoved = false;
-		  	}
-
-			  ball.draw();
-			  ball.x += ball.vx;
-			  ball.y += ball.vy;
-
-			  lpad.draw();
-			  rpad.draw();
 
 			  // Countdown timer
 		  	if (secLeft > 0) {
@@ -330,28 +406,19 @@
 		  	}
 		  }
 
-
 		  function start(e) {
 		  	mouseX = e.offsetX;
 		  	mouseY = e.offsetY;
-		  	if (mouseX >= startButton.x &&
-		  			mouseX <= startButton.x + startButton.width &&
-		  			mouseY >= startButton.y &&
-		  			mouseY <= startButton.y + startButton.height) {
-					gameField.addEventListener("mousemove", (e) => {
-						mouseY = e.offsetY;
-						if (mouseY <= gameField.height - lpad.height) {
-							hasMoved = true;
-						}
-					});
-		  		ball.x = ball.initX;
-		  		ball.y = ball.initY;
-		  		ball.vx = ball.initVx;
-		  		ball.vy = ball.initVy;
-		  		lpad.x = lpad.initX;
-		  		lpad.y = lpad.initY;
-		  		rpad.x = rpad.initX;
-		  		rpad.y = rpad.initY;
+		  	if (mouseX >= startButton.getX() &&
+		  			mouseX <= startButton.getX() + startButton.getWidth() &&
+		  			mouseY >= startButton.getY() &&
+		  			mouseY <= startButton.getY() + startButton.getHeight()) {
+		  		balls = [new Ball(100, 100, 10, 5)];
+		  		leftPad = new Paddle(0, 100, 25, 150);
+		  		rightPad = new Paddle(1275, 100, 25, 150);
+		  		leftPad.registerKeys("q", "a");
+		  		rightPad.registerKeys("p", "l");
+		  		paddles = [leftPad, rightPad];
 					e.currentTarget.removeEventListener("click", start);
 					draw();
 		  	}
@@ -360,6 +427,8 @@
 		  // Controls start screen
 		  function init() {
 		  	gameField.addEventListener("click", start);
+		  	startButton = new Button(595, 300, 150, 75);
+		  	startButton.draw("Play", "30px serif", 50, 45);
 
 		  	document.addEventListener("keydown", (e) => {
 		  		if (e.key == "Escape" && started) {
@@ -370,7 +439,6 @@
 		  	ctxt.font = "48px serif";
 		  	ctxt.fillStyle = "white";
 		  	ctxt.fillText("Impongsible", 550, 250);
-		  	startButton.draw();
 		  }
 
 		  init();
