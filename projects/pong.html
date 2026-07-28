@@ -106,12 +106,16 @@
 		  		return this.#height;
 		  	}
 
-		  	draw(text, font, offsetX, offsetY) {
+		  	draw(text, font) {
+		  		ctxt.fillStyle = "black";
+		  		ctxt.fillRect(this.#x, this.#y, this.#width, this.#height);
 		  		ctxt.strokeStyle = "white";
 		  		ctxt.strokeRect(this.#x, this.#y, this.#width, this.#height);
 		  		ctxt.font = font;
 		  		ctxt.fillStyle = "white";
-		  		ctxt.fillText(text, this.#x + offsetX, this.#y + offsetY);
+		  		ctxt.textAlign = "center";
+		  		ctxt.textBaseline = "middle";
+		  		ctxt.fillText(text, this.#x + this.#width/2, this.#y + this.#height/2);
 		  	}
 		  }
 
@@ -209,14 +213,15 @@
 		  	started = false;
 		  	ctxt.font = "48px serif";
 		  	ctxt.fillStyle = "white";
+		  	ctxt.textAlign = "center";
 		  	if (whoWins == 0) {
-		  		ctxt.fillText("Player 1 wins!", 500, 250);
+		  		ctxt.fillText("Player 1 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
 		  	} else {
-		  		ctxt.fillText("Player 2 wins!", 500, 250);
+		  		ctxt.fillText("Player 2 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
 		  	}
 		  	gameField.addEventListener("click", endRestart);
-		  	endRestartButton = new Button(550, 300, 150, 75);
-		  	endRestartButton.draw("Restart", "30px serif", 35, 45);
+		  	endRestartButton = new Button(gameField.width/2-gameField.width/16, gameField.height/2, gameField.width/8, gameField.height/8);
+		  	endRestartButton.draw("Restart", "30px serif");
 		  }
 
 		  function restart(e) {
@@ -261,17 +266,18 @@
 		  	// Draw pause message box (semi-transparent box)
 		  	ctxt.font = "48px serif";
 		  	ctxt.fillStyle = "white";
-		  	ctxt.fillText("Paused", 600, 250);
+		  	ctxt.textAlign = "center";
+		  	ctxt.fillText("Paused", gameField.width/2, gameField.height/2-gameField.height/10);
 
 		  	// Draw "Continue" button
 		  	gameField.addEventListener("click", unpause);
-		  	continueButton = new Button(675, 300, 150, 75);
-		  	continueButton.draw("Continue", "30px serif", 25, 45);
+		  	continueButton = new Button(gameField.width/2 - gameField.width/80 - gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
+		  	continueButton.draw("Continue", "30px serif");
 
 		  	// Draw "Restart" button
 		  	gameField.addEventListener("click", restart);
-		  	restartButton = new Button(500, 300, 150, 75);
-		  	restartButton.draw("Restart", "30px serif", 35, 45);
+		  	restartButton = new Button(gameField.width/2 + gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
+		  	restartButton.draw("Restart", "30px serif");
 		  }
 
 		  function countdown(timestamp) {
@@ -279,8 +285,8 @@
 
 				ctxt.font = "60px serif";
 				ctxt.fillStyle = "white";
-				ctxt.clearRect(600, 250, 100, 100);
-				ctxt.fillText(secLeft, 650, 300);
+				ctxt.clearRect(gameField.width/2-gameField.width/20, gameField.height/2-gameField.height/10, 100, 100);
+				ctxt.fillText(secLeft, gameField.width/2, gameField.height/2);
 
 		  	const elapsed = timestamp - lastTime;
 
@@ -365,15 +371,15 @@
 		  	// Draw "net"
 		  	ctxt.beginPath();
 		  	for (i = 0; i < 100; i++) {
-		  		ctxt.moveTo(650, 6*i + 1.5);
-		  		ctxt.lineTo(650, 6*i + 4.5);
+		  		ctxt.moveTo(gameField.width/2, 6*i + 1.5);
+		  		ctxt.lineTo(gameField.width/2, 6*i + 4.5);
 		  	}
 		  	ctxt.stroke();
 
 		  	// Draw score
 		  	ctxt.font = "30px serif";
 		  	ctxt.fillStyle = "white";
-		  	ctxt.fillText("Score: " + score, 1150, 60);
+		  	ctxt.fillText("Score: " + score, gameField.width-gameField.width/10, gameField.height/10);
 
 		  	for (const ball of balls) {
 		  		handleCollision(ball);
@@ -427,8 +433,8 @@
 		  // Controls start screen
 		  function init() {
 		  	gameField.addEventListener("click", start);
-		  	startButton = new Button(595, 300, 150, 75);
-		  	startButton.draw("Play", "30px serif", 50, 45);
+		  	startButton = new Button(gameField.width/2-gameField.width/20, gameField.height/2, gameField.width/10, gameField.height/8);
+		  	startButton.draw("Play", "30px serif");
 
 		  	document.addEventListener("keydown", (e) => {
 		  		if (e.key == "Escape" && started) {
@@ -438,7 +444,8 @@
 
 		  	ctxt.font = "48px serif";
 		  	ctxt.fillStyle = "white";
-		  	ctxt.fillText("Impongsible", 550, 250);
+		  	ctxt.textAlign = "center";
+		  	ctxt.fillText("Impongsible", gameField.width/2, gameField.height/2-gameField.height/10);
 		  }
 
 		  init();
