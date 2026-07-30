@@ -270,14 +270,14 @@
 		  	ctxt.fillText("Paused", gameField.width/2, gameField.height/2-gameField.height/10);
 
 		  	// Draw "Continue" button
-		  	gameField.addEventListener("click", unpause);
-		  	continueButton = new Button(gameField.width/2 - gameField.width/80 - gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
-		  	continueButton.draw("Continue", "30px serif");
+		  	gameField.addEventListener("click", restart);
+		  	restartButton = new Button(gameField.width/2 - gameField.width/80 - gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
+		  	restartButton.draw("Restart", "30px serif");
 
 		  	// Draw "Restart" button
-		  	gameField.addEventListener("click", restart);
-		  	restartButton = new Button(gameField.width/2 + gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
-		  	restartButton.draw("Restart", "30px serif");
+		  	gameField.addEventListener("click", unpause);
+		  	continueButton = new Button(gameField.width/2 + gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
+		  	continueButton.draw("Continue", "30px serif");
 		  }
 
 		  function countdown(timestamp) {
@@ -306,8 +306,8 @@
 		  function handleCollision(ball) {
 		  	const ballX = ball.getX();
 		  	const ballY = ball.getY();
-		  	var ballVx = ball.getVx();
-		  	var ballVy = ball.getVy();
+		  	let ballVx = ball.getVx();
+		  	let ballVy = ball.getVy();
 
 		  	const leftPadX = paddles[0].getX();
 		  	const leftPadY = paddles[0].getY();
@@ -328,8 +328,36 @@
 		  										(ballX + Ball.radius >= rightPadX && ballY - Ball.radius <= rightPadY + padHeight && ballY >= rightPadY + padHeight);
 
 			  if (hitLeftPad || hitRightPad) {
-			  	ball.setVx(-ballVx);
-			  	ball.setVy(ballVy);
+			  	let distMid;
+			  	if (hitLeftPad) {
+						distMid = 2 * Math.abs(ballY - (leftPadY + padHeight/2)) / padHeight;
+			  	} else {
+			  		distMid = 2 * Math.abs(ballY - (rightPadY + padHeight/2)) / padHeight;
+			  	}
+					const velocity = Math.sqrt(ballVx**2 + ballVy**2);
+					const angle = Math.atan(ballVy/ballVx);
+					let newAngle;
+					if (ballVx > 0 && ballVy >= 0) {
+						newAngle = angle + distMid * Math.PI/6;
+					} else if (ballVx > 0 && ballVy < 0) {
+						newAngle = angle - distMid * Math.PI/6;
+					} else if (ballVx < 0 && ballVy >= 0) {
+						newAngle = -angle + distMid * Math.PI/6;
+					} else {
+						newAngle = -angle - distMid * Math.PI/6;
+					}
+					if (newAngle > Math.PI/4) {
+						newAngle -= Math.PI/4;
+					}
+					if (newAngle < -Math.PI/4) {
+						newAngle += Math.PI/4;
+					}
+					if (ballVx > 0) {
+						ball.setVx(-velocity * Math.cos(newAngle));
+					} else {
+						ball.setVx(velocity * Math.cos(newAngle));
+					}
+					ball.setVy(velocity * Math.sin(newAngle));
 			  	ballVx = ball.getVx();
 			  	ballVy = ball.getVy();
 			  	score += 1;
