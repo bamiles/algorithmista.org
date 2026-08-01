@@ -198,9 +198,9 @@
 		  		lastTime = null;
 		  		score = 0;
 		  		secLeft = 3;
-		  		balls = [new Ball(100, 100, 10, 5)];
-					leftPad = new Paddle(0, 100, 25, 150);
-		  		rightPad = new Paddle(1275, 100, 25, 150);
+		  		balls = [new Ball(gameField.width/10, gameField.height/2, 11, 0)];
+					leftPad = new Paddle(0, gameField.width/2-75, 25, 150);
+		  		rightPad = new Paddle(1275, gameField.width/2-75, 25, 150);
 		  		leftPad.registerKeys("q", "a");
 		  		rightPad.registerKeys("p", "l");
 		  		paddles = [leftPad, rightPad];
@@ -236,9 +236,9 @@
 		  		lastTime = null;
 		  		score = 0;
 		  		secLeft = 3;
-		  		balls = [new Ball(100, 100, 10, 5)];
-					leftPad = new Paddle(0, 100, 25, 150);
-		  		rightPad = new Paddle(1275, 100, 25, 150);
+		  		balls = [new Ball(gameField.width/10, gameField.height/2, 11, 0)];
+					leftPad = new Paddle(0, gameField.width/2-75, 25, 150);
+		  		rightPad = new Paddle(1275, gameField.width/2-75, 25, 150);
 		  		leftPad.registerKeys("q", "a");
 		  		rightPad.registerKeys("p", "l");
 		  		paddles = [leftPad, rightPad];
@@ -329,14 +329,17 @@
 
 			  if (hitLeftPad || hitRightPad) {
 			  	let distMid;
+
 			  	if (hitLeftPad) {
 						distMid = 2 * Math.abs(ballY - (leftPadY + padHeight/2)) / padHeight;
 			  	} else {
 			  		distMid = 2 * Math.abs(ballY - (rightPadY + padHeight/2)) / padHeight;
 			  	}
+
 					const velocity = Math.sqrt(ballVx**2 + ballVy**2);
 					const angle = Math.atan(ballVy/ballVx);
 					let newAngle;
+
 					if (ballVx > 0 && ballVy >= 0) {
 						newAngle = angle + distMid * Math.PI/6;
 					} else if (ballVx > 0 && ballVy < 0) {
@@ -346,18 +349,17 @@
 					} else {
 						newAngle = -angle - distMid * Math.PI/6;
 					}
-					if (newAngle > Math.PI/4) {
-						newAngle -= Math.PI/4;
-					}
-					if (newAngle < -Math.PI/4) {
-						newAngle += Math.PI/4;
-					}
+
+					if (newAngle > Math.PI/4) { newAngle -= Math.PI/4; }
+					if (newAngle < -Math.PI/4) { newAngle += Math.PI/4; }
+
 					if (ballVx > 0) {
-						ball.setVx(-velocity * Math.cos(newAngle));
+						ball.setVx(-velocity * (1 - newAngle**2/2));
 					} else {
-						ball.setVx(velocity * Math.cos(newAngle));
+						ball.setVx(velocity * (1 - newAngle**2/2));
 					}
-					ball.setVy(velocity * Math.sin(newAngle));
+					ball.setVy(velocity * newAngle * (1 - newAngle**2/6));
+
 			  	ballVx = ball.getVx();
 			  	ballVy = ball.getVy();
 			  	score += 1;
@@ -409,6 +411,7 @@
 		  	ctxt.fillStyle = "white";
 		  	ctxt.fillText("Score: " + score, gameField.width-gameField.width/10, gameField.height/10);
 
+		  	// Ball logic
 		  	for (const ball of balls) {
 		  		handleCollision(ball);
 		  		ball.draw(ctxt);
@@ -421,6 +424,7 @@
 				  }
 		  	}
 
+		  	// Paddle logic
 		  	for (const paddle of paddles) {
 		  		paddle.draw(ctxt);
 		  		paddle.move();
@@ -447,9 +451,9 @@
 		  			mouseX <= startButton.getX() + startButton.getWidth() &&
 		  			mouseY >= startButton.getY() &&
 		  			mouseY <= startButton.getY() + startButton.getHeight()) {
-		  		balls = [new Ball(100, 100, 10, 5)];
-		  		leftPad = new Paddle(0, 100, 25, 150);
-		  		rightPad = new Paddle(1275, 100, 25, 150);
+		  		balls = [new Ball(gameField.width/10, gameField.height/2, 11, 0)];
+		  		leftPad = new Paddle(0, gameField.height/2-75, 25, 150);
+		  		rightPad = new Paddle(1275, gameField.height/2-75, 25, 150);
 		  		leftPad.registerKeys("q", "a");
 		  		rightPad.registerKeys("p", "l");
 		  		paddles = [leftPad, rightPad];
