@@ -1,486 +1,220 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-  	<meta charset="UTF-8">
-  	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-  	<title>Impongsible</title>
-  	<style>
-  	  body {
-  	  	background-color: black;
-  	  }
-  	</style>
-  </head>
-  <body>
-  	<canvas id="gameField" width="1300" height="600"></canvas>
-		<script>
-		  const gameField = document.getElementById("gameField");
-		  const ctxt = gameField.getContext("2d");
-		  let score = 0;
-		  let secLeft = 3;
-		  let balls;
-		  let paddles;
-		  let raf;
-		  let isPaused;
-		  let started;
-		  let lastTime;
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Impongsible</title>
+	<style>
+	body {
+		background-color: black;
+	}
+	</style>
+</head>
+<body>
+	<canvas id="gameField" width="1300" height="600"></canvas>
+	<script type="module">
+		import { Ball, Button, Paddle } from "./objects.mjs";
+		import { Game } from "./game.mjs";
 
-		  class Ball {
-		  	static radius = 10;
+		const gameField = document.getElementById("gameField");
+		const ctxt = gameField.getContext("2d");
 
-		  	#x;
-		  	#y;
-		  	#vx;
-		  	#vy;
+		// Buttons
+		let playSoloBtn;
+		let surrenderBtn;
+		let continueBtn;
+		let endRestartBtn;
 
-		  	constructor(initX, initY, initVx, initVy) {
-			  	this.#x = initX;
-			  	this.#y = initY;
-			  	this.#vx = initVx;
-			  	this.#vy = initVy;
-		  	}
+		// Game objects
+		let currState;
+		let game;
 
-		  	getX() {
-		  		return this.#x;
-		  	}
+		// Mouse coordinates
+		let mouseX;
+		let mouseY;
 
-		  	getY() {
-		  		return this.#y;
-		  	}
+		// Rendering function
+		function draw() {
+			ctxt.clearRect(0, 0, gameField.width, gameField.height);
+			currState = game.getGameState();
 
-		  	getVx() {
-		  		return this.#vx;
-		  	}
+			// Draw top border
+			ctxt.beginPath();
+			ctxt.moveTo(0, 0);
+			ctxt.lineTo(gameField.width, 0);
+			ctxt.stroke();
 
-		  	getVy() {
-		  		return this.#vy;
-		  	}
+			// Draw bottom border
+			ctxt.beginPath();
+			ctxt.moveTo(0, gameField.height);
+			ctxt.lineTo(gameField.width, gameField.height);
+			ctxt.stroke();
 
-		  	setVx(vx) {
-		  		this.#vx = vx;
-		  	}
+			// Draw "net"
+			ctxt.beginPath();
+			for (let i = 0; i < 100; i++) {
+			ctxt.moveTo(gameField.width/2, gameField.height/100*i + 1.5);
+			ctxt.lineTo(gameField.width/2, gameField.height/100*i + 4.5);
+			}
+			ctxt.stroke();
 
-		  	setVy(vy) {
-		  		this.#vy = vy;
-		  	}
+			// Draw score
+			ctxt.font = "30px serif";
+			ctxt.fillStyle = "white";
+			ctxt.fillText("Score: " + currState["score"], gameField.width-gameField.width/10, gameField.height/10);
 
-		  	draw() {
-				  ctxt.beginPath();
-				  ctxt.arc(this.#x, this.#y, Ball.radius, 0, Math.PI*2, true);
-				  ctxt.closePath();
-				  ctxt.fillStyle = "white";
-				  ctxt.fill();
-		  	}
+			// Draw balls
+			for (const ball of currState["balls"]) {
+				ball.draw(ctxt);
+			}
 
-		  	move() {
-		  		this.#x += this.#vx;
-		  		this.#y += this.#vy;
-		  	}
-		  }
+			// Draw paddles
+			for (const paddle of currState["paddles"]) {
+				paddle.draw(ctxt);
+			}
 
-		  class Button {
-		  	#x;
-		  	#y;
-		  	#width;
-		  	#height;
+			if (game.getCountdown() > 0) {
+				renderCountdown();
+				requestAnimationFrame(draw);
+			}
 
-		  	constructor(x, y, width, height) {
-		  		this.#x = x;
-		  		this.#y = y;
-		  		this.#width = width;
-		  		this.#height = height;
-		  	}
+			if (!game.isPaused() && game.hasStarted()) {
+				requestAnimationFrame(draw);
+			}
 
-		  	getX() {
-		  		return this.#x;
-		  	}
+			if (game.isPaused()) {
+				renderPause();
+			}
 
-		  	getY() {
-		  		return this.#y;
-		  	}
+			if (game.hasEnded()) {
+				renderEnd();
+			}
+		}
 
-		  	getWidth() {
-		  		return this.#width;
-		  	}
+		function renderCountdown(state=undefined) {
+			const count = game.getCountdown();
+			ctxt.font = "60px serif";
+			ctxt.strokeStyle = "white";
+			ctxt.fillStyle = "white";
+			ctxt.clearRect(gameField.width/2-gameField.width/20, gameField.height/2-gameField.height/10, gameField.width/10, gameField.width/10);
+			ctxt.strokeRect(gameField.width/2-gameField.width/20, gameField.height/2-gameField.height/10, gameField.width/10, gameField.width/10);
+			ctxt.fillText(count, gameField.width/2, gameField.height/2);
+		}		
 
-		  	getHeight() {
-		  		return this.#height;
-		  	}
+		function renderPause() {
+			// Draw pause message box (semi-transparent box)
+			ctxt.font = "48px serif";
+			ctxt.fillStyle = "white";
+			ctxt.textAlign = "center";
+			ctxt.fillText("Paused", gameField.width/2, gameField.height/2-gameField.height/10);
 
-		  	draw(text, font) {
-		  		ctxt.fillStyle = "black";
-		  		ctxt.fillRect(this.#x, this.#y, this.#width, this.#height);
-		  		ctxt.strokeStyle = "white";
-		  		ctxt.strokeRect(this.#x, this.#y, this.#width, this.#height);
-		  		ctxt.font = font;
-		  		ctxt.fillStyle = "white";
-		  		ctxt.textAlign = "center";
-		  		ctxt.textBaseline = "middle";
-		  		ctxt.fillText(text, this.#x + this.#width/2, this.#y + this.#height/2);
-		  	}
-		  }
+			// Draw "Continue" button
+			gameField.addEventListener("click", surrender);
+			surrenderBtn = new Button(ctxt, gameField.width/2 - gameField.width/80 - gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
+			surrenderBtn.draw("Give Up", "30px serif");
 
-		  class Paddle {
-		  	static #vy = 9;
+			// Draw "Restart" button
+			gameField.addEventListener("click", unpause);
+			continueBtn = new Button(ctxt, gameField.width/2 + gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
+			continueBtn.draw("Continue", "30px serif");
+		}
 
-		  	#x;
-		  	#y;
-		  	#width;
-		  	#height;
-		  	#up;
-		  	#down;
+		function renderEnd() {
+			ctxt.font = "48px serif";
+			ctxt.fillStyle = "white";
+			ctxt.textAlign = "center";
+			ctxt.fillText(`Final Score: ${game.getScore()}`, gameField.width/2, gameField.height/2-gameField.height/10);
 
-		  	constructor(x, y, width, height) {
-		  		this.#x = x;
-		  		this.#y = y;
-		  		this.#width = width;
-		  		this.#height = height;
-		  	}
+			gameField.addEventListener("click", endRestart);
+			endRestartBtn = new Button(ctxt, gameField.width/2-gameField.width/16, gameField.height/2, gameField.width/8, gameField.height/8);
+			endRestartBtn.draw("Restart", "30px serif");
+		}	
 
-		  	getX() {
-		  		return this.#x;
-		  	}
+		function unpause(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
+			if (continueBtn.isClicked(mouseX, mouseY)) {
+				gameField.removeEventListener("click", unpause);
+				gameField.removeEventListener("click", surrender);
+				game.unpause();
+				requestAnimationFrame(draw);
+			}
+		}
 
-		  	getY() {
-		  		return this.#y;
-		  	}
+		function surrender(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
+			if (surrenderBtn.isClicked(mouseX, mouseY)) {
+				gameField.removeEventListener("click", unpause);
+				gameField.removeEventListener("click", surrender);
+				game.end(0);
+				requestAnimationFrame(draw);
+			}
+		}
 
-		  	getWidth() {
-		  		return this.#width;
-		  	}
+		function endRestart(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
+			if (endRestartBtn.isClicked(mouseX, mouseY)) {
+				gameField.removeEventListener("click", endRestart);
 
-		  	getHeight() {
-		  		return this.#height;
-		  	}
+				const ball = new Ball(gameField.width/10, gameField.height/2, 11, 0);
+				const leftPad = new Paddle(10, gameField.height/2-75, 25, 150, "", "left");
+				const rightPad = new Paddle(gameField.width-35, gameField.height/2-75, 25, 150, "", "right");
+				leftPad.registerKeys("q", "a");
+				rightPad.registerKeys("p", "l");
 
-		  	registerKeys(upKey, downKey) {
-					document.addEventListener("keydown", (e) => {
-						if (e.key == upKey && started) {
-							this.#up = true;
-						}
-						if (e.key == downKey && started) {
-							this.#down = true;
-						}
-					});
+				const balls = [ball];
+				const paddles = [leftPad, rightPad];
+				game = new Game("single", 0, balls, paddles, gameField.width, gameField.height);
+				game.start();
 
-					document.addEventListener("keyup", (e) => {
-						if (e.key == upKey && started) {
-							this.#up = false;
-						}
-						if (e.key == downKey && started) {
-							this.#down = false;
-						}
-					});
-		  	}
+				requestAnimationFrame(draw);
+			}
+		}
 
-		  	draw() {
-				  ctxt.fillStyle = "red";
-				  ctxt.fillRect(this.#x, this.#y, this.#width, this.#height);
-		  	}
+		function startSolo(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
 
-		  	move() {
-		  		if (this.#up && this.#y >= Paddle.#vy) {
-		  			this.#y -= Paddle.#vy;
-		  		}
-		  		if (this.#down && this.#y + this.#height <= gameField.height - Paddle.#vy) {
-		  			this.#y += Paddle.#vy;
-		  		}
-		  	}
-		  }
+			if (playSoloBtn.isClicked(mouseX, mouseY)) {
+				gameField.removeEventListener("click", startSolo);
 
-		  function endRestart(e) {
-		  	mouseX = e.offsetX;
-		  	mouseY = e.offsetY;
-		  	if (mouseX >= endRestartButton.getX() &&
-		  			mouseX <= endRestartButton.getX() + endRestartButton.getWidth() &&
-		  			mouseY >= endRestartButton.getY() &&
-		  			mouseY <= endRestartButton.getY() + endRestartButton.getHeight()) {
-		  		isPaused = false;
-		  		lastTime = null;
-		  		score = 0;
-		  		secLeft = 3;
-		  		balls = [new Ball(gameField.width/10, gameField.height/2, 11, 0)];
-					leftPad = new Paddle(0, gameField.width/2-75, 25, 150);
-		  		rightPad = new Paddle(1275, gameField.width/2-75, 25, 150);
-		  		leftPad.registerKeys("q", "a");
-		  		rightPad.registerKeys("p", "l");
-		  		paddles = [leftPad, rightPad];
-		  		e.currentTarget.removeEventListener("click", endRestart);
-		  		draw();
-		  	}
-		  }
+				const ball = new Ball(gameField.width/10, gameField.height/2, 11, 0);
+				const leftPad = new Paddle(0, gameField.height/2-75, 25, 150, "", "left");
+				const rightPad = new Paddle(gameField.width-25, gameField.height/2-75, 25, 150, "", "right");
+				leftPad.registerKeys("q", "a");
+				rightPad.registerKeys("p", "l");
 
-		  function end(whoWins) {
-		  	started = false;
-		  	ctxt.font = "48px serif";
-		  	ctxt.fillStyle = "white";
-		  	ctxt.textAlign = "center";
-		  	if (whoWins == 0) {
-		  		ctxt.fillText("Player 1 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
-		  	} else {
-		  		ctxt.fillText("Player 2 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
-		  	}
-		  	gameField.addEventListener("click", endRestart);
-		  	endRestartButton = new Button(gameField.width/2-gameField.width/16, gameField.height/2, gameField.width/8, gameField.height/8);
-		  	endRestartButton.draw("Restart", "30px serif");
-		  }
+				const balls = [ball];
+				const paddles = [leftPad, rightPad];
+				game = new Game("single", 0, balls, paddles, gameField.width, gameField.height);
+				game.start();
 
-		  function restart(e) {
-		  	mouseX = e.offsetX;
-		  	mouseY = e.offsetY;
-		  	if (mouseX >= restartButton.getX() &&
-		  			mouseX <= restartButton.getX() + restartButton.getWidth() &&
-		  			mouseY >= restartButton.getY() &&
-		  			mouseY <= restartButton.getY() + restartButton.getHeight()) {
-		  		isPaused = false;
-		  		started = false;
-		  		lastTime = null;
-		  		score = 0;
-		  		secLeft = 3;
-		  		balls = [new Ball(gameField.width/10, gameField.height/2, 11, 0)];
-					leftPad = new Paddle(0, gameField.width/2-75, 25, 150);
-		  		rightPad = new Paddle(1275, gameField.width/2-75, 25, 150);
-		  		leftPad.registerKeys("q", "a");
-		  		rightPad.registerKeys("p", "l");
-		  		paddles = [leftPad, rightPad];
-		  		e.currentTarget.removeEventListener("click", restart);
-		  		e.currentTarget.removeEventListener("click", unpause);
-		  		draw();
-		  	}
-		  }
-
-		  function unpause(e) {
-		  	mouseX = e.offsetX;
-		  	mouseY = e.offsetY;
-		  	if (mouseX >= continueButton.getX() &&
-		  			mouseX <= continueButton.getX() + continueButton.getWidth() &&
-		  			mouseY >= continueButton.getY() &&
-		  			mouseY <= continueButton.getY() + continueButton.getHeight()) {
-		  		isPaused = false;
-		  		e.currentTarget.removeEventListener("click", unpause);
-		  		e.currentTarget.removeEventListener("click", restart);
-		  		draw();
-		  	}
-		  }
-
-		  function pause() {
-		  	// Draw pause message box (semi-transparent box)
-		  	ctxt.font = "48px serif";
-		  	ctxt.fillStyle = "white";
-		  	ctxt.textAlign = "center";
-		  	ctxt.fillText("Paused", gameField.width/2, gameField.height/2-gameField.height/10);
-
-		  	// Draw "Continue" button
-		  	gameField.addEventListener("click", restart);
-		  	restartButton = new Button(gameField.width/2 - gameField.width/80 - gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
-		  	restartButton.draw("Restart", "30px serif");
-
-		  	// Draw "Restart" button
-		  	gameField.addEventListener("click", unpause);
-		  	continueButton = new Button(gameField.width/2 + gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
-		  	continueButton.draw("Continue", "30px serif");
-		  }
-
-		  function countdown(timestamp) {
-		  	if (!lastTime) { lastTime = timestamp; }
-
-				ctxt.font = "60px serif";
-				ctxt.fillStyle = "white";
-				ctxt.clearRect(gameField.width/2-gameField.width/20, gameField.height/2-gameField.height/10, 100, 100);
-				ctxt.fillText(secLeft, gameField.width/2, gameField.height/2);
-
-		  	const elapsed = timestamp - lastTime;
-
-		  	if (elapsed >= 1000) {
-		  		secLeft -= 1;
-		  		lastTime = timestamp;
-		  	}
-
-				if (secLeft == 0) {
-					started = true;
-					draw();
-				} else {
-					raf = requestAnimationFrame(countdown);
-				}
-		  }
-
-		  function handleCollision(ball) {
-		  	const ballX = ball.getX();
-		  	const ballY = ball.getY();
-		  	let ballVx = ball.getVx();
-		  	let ballVy = ball.getVy();
-
-		  	const leftPadX = paddles[0].getX();
-		  	const leftPadY = paddles[0].getY();
-		  	const rightPadX = paddles[1].getX();
-		  	const rightPadY = paddles[1].getY();
-		  	const padWidth = paddles[0].getWidth();
-		  	const padHeight = paddles[0].getHeight();
-
-		  	const hitLeftPad = ballY + ballVy >= leftPadY &&
-		  										ballY + ballVy <= leftPadY + padHeight &&
-		  										ballX - Ball.radius + ballVx <= leftPadX + padWidth;
-		  	const hitRightPad = ballY + ballVy >= rightPadY &&
-		  										ballY + ballVy <= rightPadY + padHeight &&
-		  										ballX + Ball.radius + ballVx >= rightPadX;
-		  	const hitTopPad = (ballX - Ball.radius <= leftPadX + padWidth && ballY + Ball.radius >= leftPadY && ballY <= leftPadY) ||
-		  										(ballX + Ball.radius >= rightPadX && ballY + Ball.radius >= rightPadY && ballY <= rightPadY);
-		  	const hitBotPad = (ballX - Ball.radius <= leftPadX + padWidth && ballY - Ball.radius <= leftPadY + padHeight && ballY >= leftPadY + padHeight) ||
-		  										(ballX + Ball.radius >= rightPadX && ballY - Ball.radius <= rightPadY + padHeight && ballY >= rightPadY + padHeight);
-
-			  if (hitLeftPad || hitRightPad) {
-			  	let distMid;
-
-			  	if (hitLeftPad) {
-						distMid = 2 * Math.abs(ballY - (leftPadY + padHeight/2)) / padHeight;
-			  	} else {
-			  		distMid = 2 * Math.abs(ballY - (rightPadY + padHeight/2)) / padHeight;
-			  	}
-
-					const velocity = Math.sqrt(ballVx**2 + ballVy**2);
-					const angle = Math.atan(ballVy/ballVx);
-					let newAngle;
-
-					if (ballVx > 0 && ballVy >= 0) {
-						newAngle = angle + distMid * Math.PI/6;
-					} else if (ballVx > 0 && ballVy < 0) {
-						newAngle = angle - distMid * Math.PI/6;
-					} else if (ballVx < 0 && ballVy >= 0) {
-						newAngle = -angle + distMid * Math.PI/6;
-					} else {
-						newAngle = -angle - distMid * Math.PI/6;
+				document.addEventListener("keydown", (e) => {
+					if (e.key === "Escape" && game.hasStarted()) {
+						game.pause();
 					}
+				});
 
-					if (newAngle > Math.PI/4) { newAngle -= Math.PI/4; }
-					if (newAngle < -Math.PI/4) { newAngle += Math.PI/4; }
+				requestAnimationFrame(draw);
+			}
+		}
 
-					if (ballVx > 0) {
-						ball.setVx(-velocity * (1 - newAngle**2/2));
-					} else {
-						ball.setVx(velocity * (1 - newAngle**2/2));
-					}
-					ball.setVy(velocity * newAngle * (1 - newAngle**2/6));
+		// Controls start screen
+		function init() {
+			playSoloBtn = new Button(ctxt, gameField.width/2-gameField.width/16, gameField.height/2, 
+				gameField.width/8, gameField.height/8);
+			gameField.addEventListener("click", startSolo);
+			playSoloBtn.draw("Play (Solo)", "30px serif");
 
-			  	ballVx = ball.getVx();
-			  	ballVy = ball.getVy();
-			  	score += 1;
+			ctxt.font = "48px serif";
+			ctxt.fillStyle = "white";
+			ctxt.textAlign = "center";
+			ctxt.fillText("Impongsible", gameField.width/2, gameField.height/2-gameField.height/10);
+		}
 
-				  if (score % 10 == 0 && score >= 10 && score <= 50) {
-				  	// Increase speed
-				  	ball.setVx(ballVx * 1.05);
-				  	ball.setVy(ballVy * 1.05);
-				  	ballVx = ball.getVx();
-				  	ballVy = ball.getVy();
-				  }
-			  }
-
-			  // TODO: Fix ball clipping through paddle when paddle moves and ball is moving vertically.
-			  if (hitTopPad || hitBotPad) {
-			  	ball.setVy(-ballVy);
-				  ballVy = ball.getVy();
-			  }
-
-			  if (ballY + ballVy > gameField.height - Ball.radius || ballY + ballVy < Ball.radius) {
-			  	ball.setVy(-ballVy);
-			  }
-		  }
-
-		  // Displays game
-		  function draw() {
-		  	ctxt.clearRect(0, 0, gameField.width, gameField.height);
-
-		  	// Draw top border
-		  	ctxt.beginPath();
-		  	ctxt.moveTo(0, 0);
-		  	ctxt.lineTo(gameField.width, 0);
-		  	ctxt.stroke();
-		  	// Draw bottom border
-		  	ctxt.beginPath();
-		  	ctxt.moveTo(0, gameField.height);
-		  	ctxt.lineTo(gameField.width, gameField.height);
-		  	ctxt.stroke();
-		  	// Draw "net"
-		  	ctxt.beginPath();
-		  	for (i = 0; i < 100; i++) {
-		  		ctxt.moveTo(gameField.width/2, 6*i + 1.5);
-		  		ctxt.lineTo(gameField.width/2, 6*i + 4.5);
-		  	}
-		  	ctxt.stroke();
-
-		  	// Draw score
-		  	ctxt.font = "30px serif";
-		  	ctxt.fillStyle = "white";
-		  	ctxt.fillText("Score: " + score, gameField.width-gameField.width/10, gameField.height/10);
-
-		  	// Ball logic
-		  	for (const ball of balls) {
-		  		handleCollision(ball);
-		  		ball.draw(ctxt);
-		  		ball.move();
-				  if (ball.getX() - Ball.radius > gameField.width) {
-				  	end(0); // Player 1 wins
-				  }
-				  if (ball.getX() < -Ball.radius) {
-				  	end(1); // Player 2 wins
-				  }
-		  	}
-
-		  	// Paddle logic
-		  	for (const paddle of paddles) {
-		  		paddle.draw(ctxt);
-		  		paddle.move();
-		  	}
-
-			  // Countdown timer
-		  	if (secLeft > 0) {
-		  		countdown();
-		  	}
-
-		  	if (!isPaused && started) {
-		  		raf = requestAnimationFrame(draw);
-		  	}
-
-		  	if (isPaused) {
-		  		pause();
-		  	}
-		  }
-
-		  function start(e) {
-		  	mouseX = e.offsetX;
-		  	mouseY = e.offsetY;
-		  	if (mouseX >= startButton.getX() &&
-		  			mouseX <= startButton.getX() + startButton.getWidth() &&
-		  			mouseY >= startButton.getY() &&
-		  			mouseY <= startButton.getY() + startButton.getHeight()) {
-		  		balls = [new Ball(gameField.width/10, gameField.height/2, 11, 0)];
-		  		leftPad = new Paddle(0, gameField.height/2-75, 25, 150);
-		  		rightPad = new Paddle(1275, gameField.height/2-75, 25, 150);
-		  		leftPad.registerKeys("q", "a");
-		  		rightPad.registerKeys("p", "l");
-		  		paddles = [leftPad, rightPad];
-					e.currentTarget.removeEventListener("click", start);
-					draw();
-		  	}
-		  }
-
-		  // Controls start screen
-		  function init() {
-		  	gameField.addEventListener("click", start);
-		  	startButton = new Button(gameField.width/2-gameField.width/20, gameField.height/2, gameField.width/10, gameField.height/8);
-		  	startButton.draw("Play", "30px serif");
-
-		  	document.addEventListener("keydown", (e) => {
-		  		if (e.key == "Escape" && started) {
-		  			isPaused = true;
-		  		}
-		  	});
-
-		  	ctxt.font = "48px serif";
-		  	ctxt.fillStyle = "white";
-		  	ctxt.textAlign = "center";
-		  	ctxt.fillText("Impongsible", gameField.width/2, gameField.height/2-gameField.height/10);
-		  }
-
-		  init();
-		</script>
+		init();
+	</script>
   </body>
 </html>
