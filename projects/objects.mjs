@@ -13,16 +13,8 @@ export class Ball {
 	  	this.#vy = initVy;
 	}
 
-	setX(x) {
-		this.#x = x;
-	}
-
 	getX() {
 		return this.#x;
-	}
-
-	setY(y) {
-		this.#y = y;
 	}
 
 	getY() {
@@ -85,22 +77,6 @@ export class Button {
 		this.#y = y;
 		this.#width = width;
 		this.#height = height;
-	}
-
-	getX() {
-		return this.#x;
-	}
-
-	getY() {
-		return this.#y;
-	}
-
-	getWidth() {
-		return this.#width;
-	}
-
-	getHeight() {
-		return this.#height;
 	}
 
 	isClicked(mouseX, mouseY) {
@@ -171,10 +147,6 @@ export class Paddle {
 		return this.#type;
 	}
 
-	getDirection() {
-		return this.#direction;
-	}
-
 	setDirection(direction) {
 		this.#direction = direction;
 	}
@@ -208,7 +180,7 @@ export class Paddle {
 		if (this.#direction === "up" && this.#y >= Paddle.#VY) {
 			this.#y -= Paddle.#VY;
 		} else if (this.#direction === "down" && this.#y + this.#height <= height - Paddle.#VY) {
-		  this.#y += Paddle.#VY;
+			this.#y += Paddle.#VY;
 		}
 	}
 
