@@ -35,7 +35,7 @@ export class Game {
             return;
         }
 
-        const intervalId = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             this.#countdown--;
             if (this.#countdown > 0) {
                 this.start();
@@ -43,7 +43,7 @@ export class Game {
                 this.#started = true;
                 this.#loop();
             } else {
-                clearTimeout(intervalId);
+                clearTimeout(timeoutId);
             }
         }, 1000);
     }
@@ -122,7 +122,7 @@ export class Game {
     }
 
     #loop() {
-        const intervalId = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             for (const ball of this.#balls) {
                 this.#handleCollision(ball);
                 ball.move();
@@ -142,7 +142,7 @@ export class Game {
             if (this.#started && !this.#paused) {
                 this.#loop();
             } else {
-                clearTimeout(intervalId);
+                clearTimeout(timeoutId);
             }
         }, Game.#DURATION);
     }
