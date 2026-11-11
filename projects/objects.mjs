@@ -43,8 +43,6 @@ export class Ball {
 		ctxt.arc(this.#x, this.#y, Ball.RADIUS, 0, Math.PI*2, true);
 		ctxt.closePath();
 		ctxt.fillStyle = "white";
-		ctxt.shadowColor = "white";
-		ctxt.shadowBlur = 25;
 		ctxt.fill();
 		ctxt.restore();
 	}
@@ -88,7 +86,6 @@ export class Button {
 
 	draw(text, font) {
 		this.#ctxt.fillStyle = "black";
-		this.#ctxt.shadowColor = "black";
 		this.#ctxt.fillRect(this.#x, this.#y, this.#width, this.#height);
 		this.#ctxt.strokeStyle = "white";
 		this.#ctxt.strokeRect(this.#x, this.#y, this.#width, this.#height);
@@ -170,8 +167,6 @@ export class Paddle {
 	draw(ctxt) {
 		ctxt.save();
 		ctxt.fillStyle = "#e61e21";
-		ctxt.shadowColor = "#ed3b3e";
-		ctxt.shadowBlur = 25;
 		ctxt.fillRect(this.#x, this.#y, this.#width, this.#height);
 		ctxt.restore();
 	}
