@@ -17,6 +17,9 @@
 		import { io } from "https://cdn.socket.io/4.8.4/socket.io.esm.min.js";
 		import { Ball, Button, Paddle } from "./objects.mjs";
 		import { Game } from "./game.mjs";
+		
+		const CLOUD_FUNCTION_URL = "PLACEHOLDER_CLOUD_FUNCTION_URL";
+		const SERVER_URL = "PLACEHOLDER_SERVER_URL";
 
 		const gameField = document.getElementById("gameField");
 		const seedTextBox = document.getElementById("seedTextBox");
@@ -590,7 +593,7 @@
 				document.addEventListener("keydown", handleEnterTextBox);
 
 				try {
-					const res = await fetch(process.env.CLOUD_FUNCTION_URL, {
+					const res = await fetch(CLOUD_FUNCTION_URL, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({ action: "start" })
@@ -599,7 +602,7 @@
 					if (res.ok) {
 						ctxt.fillText("Server ready", gameField.width/2, gameField.height-gameField.height/20);
 
-						socket = io(process.env.SERVER_URL, {
+						socket = io(SERVER_URL, {
 							auth: {
 								seed: 0
 							}
