@@ -12,15 +12,34 @@
 </head>
 <body>
 	<canvas id="gameField" width="1300" height="600"></canvas>
+	<input type="text" id="seedTextBox" style="display: none">
 	<script type="module">
+		import { io } from "https://cdn.socket.io/4.8.4/socket.io.esm.min.js";
 		import { Ball, Button, Paddle } from "./objects.mjs";
 		import { Game } from "./game.mjs";
 
 		const gameField = document.getElementById("gameField");
-		const ctxt = gameField.getContext("2d");
+		const seedTextBox = document.getElementById("seedTextBox");
+		const ctxt = gameField.getContext("2d");	
+		const textBox = {
+			x: gameField.width/2-gameField.width/9.5,
+			y: gameField.height/2-gameField.height/40,
+			width: 14/65 * gameField.width,
+			height: 0.08 * gameField.height,
+			radius: 8,
+			text: "Enter your opponent's seed here...",
+			font: '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+			textColor: '#1e293b',
+			backgroundColor: "#f8fafc",
+			borderColor: "#cbd5e1",
+			borderWidth: 2,
+			padding: 12
+		};
 
 		// Buttons
 		let playSoloBtn;
+		let playMultiBtn;
+		let startMultiBtn;
 		let surrenderBtn;
 		let continueBtn;
 		let endRestartBtn;
@@ -28,10 +47,25 @@
 		// Game objects
 		let currState;
 		let game;
+		let balls;
+		let paddles;
+		let buffer;
+		let socket;
+		let mode;
+		let side;
+		let sessionId;
+		let menuOpened;
+		let lastTime;
 
 		// Mouse coordinates
 		let mouseX;
 		let mouseY;
+
+		// Key indicators
+		let upKey;
+		let downKey;
+		let flagKeyUp;
+		let flagKeyDown;
 
 		// Rendering function
 		function draw() {
@@ -53,8 +87,8 @@
 			// Draw "net"
 			ctxt.beginPath();
 			for (let i = 0; i < 100; i++) {
-			ctxt.moveTo(gameField.width/2, gameField.height/100*i + 1.5);
-			ctxt.lineTo(gameField.width/2, gameField.height/100*i + 4.5);
+				ctxt.moveTo(gameField.width/2, gameField.height/100*i + 1.5);
+				ctxt.lineTo(gameField.width/2, gameField.height/100*i + 4.5);
 			}
 			ctxt.stroke();
 
@@ -91,15 +125,186 @@
 			}
 		}
 
+		function drawMulti(timestamp) {
+			while (buffer.length > 0 && buffer[0]["timestamp"] <= timestamp - 100) {
+				buffer.shift();
+			}
+
+			if (buffer.length < 2) {
+				return;
+			}
+
+			ctxt.clearRect(0, 0, gameField.width, gameField.height);
+
+			currState = buffer[0]["state"];
+			const nextState = buffer[1]["state"];
+
+			// Draw top border
+			ctxt.beginPath();
+			ctxt.moveTo(0, 0);
+			ctxt.lineTo(gameField.width, 0);
+			ctxt.stroke();
+
+			// Draw bottom border
+			ctxt.beginPath();
+			ctxt.moveTo(0, gameField.height);
+			ctxt.lineTo(gameField.width, gameField.height);
+			ctxt.stroke();
+
+			// Draw "net"
+			ctxt.beginPath();
+			for (let i = 0; i < 1000; i++) {
+				ctxt.moveTo(gameField.width/2, gameField.height/100*i + 1.5);
+				ctxt.lineTo(gameField.width/2, gameField.height/100*i + 4.5);
+			}
+			ctxt.stroke();
+
+			// Draw score
+			ctxt.font = "30px serif";
+			ctxt.fillStyle = "white";
+			ctxt.fillText("Score: " + currState["score"], gameField.width-gameField.width/10, gameField.height/10);
+
+			// Update paddle positions
+			updatePaddle(currState);
+
+			// Time to lerp
+			for (let t = 0; t < 10; t++) {
+				// Draw balls
+				for (const ball of currState["balls"]) {
+					const newX = (1 - t/10) * ball.getX() + t/10 * nextState["balls"][0].getX();
+					const newY = (1 - t/10) * ball.getY() + t/10 * nextState["balls"][0].getY();
+					if (t > 0) {
+						// Clear last iteration
+						ctxt.beginPath();
+						ctxt.arc((1 - (t-1)/10) * ball.getX() + (t-1)/10 * nextState["balls"][0].getX(),
+							(1 - (t-1)/10) * ball.getY() + (t-1)/10 * nextState["balls"][0].getY(), 
+							Ball.RADIUS, 0, Math.PI*2, true);
+						ctxt.closePath();
+						ctxt.fillStyle = "black";
+						ctxt.fill();
+					}
+					const lerpBall = new Ball(newX, newY, ball.getVx(), ball.getVy());
+					lerpBall.draw(ctxt);
+				}
+
+				// Draw paddles
+				for (const paddle of currState["paddles"]) {
+					paddle.draw(ctxt);
+				}
+			}
+
+			if (menuOpened) {
+				surrenderBtn.draw("Surrender", "30px serif");
+				continueBtn.draw("Continue", "30px serif");
+			}
+
+			if (currState["countdown"] > 0) {
+				renderCountdown(currState);
+				buffer.shift();
+				if (performance.now() - lastTime >= 33) {
+					lastTime = performance.now();
+					requestAnimationFrame(drawMulti);
+				}
+			}
+
+			if (currState["started"]) {
+				buffer.shift();	
+				if (performance.now() - lastTime >= 33) {
+					lastTime = performance.now();
+					requestAnimationFrame(drawMulti);
+				}
+			}
+		}
+
+		function drawTextBox() {				
+			seedTextBox.type = "text";
+			seedTextBox.style = `position: absolute; 
+									display: none;
+							      box-sizing: border-box;
+							      border: 2px solid #2563eb;
+							      border-radius: 8px;
+							      outline: none;
+							      background: #ffffff;
+							      padding: 0 12px;
+							      margin: 0;`;
+
+			// Draw background
+			ctxt.save();
+			ctxt.beginPath();
+			ctxt.roundRect(textBox.x, textBox.y, textBox.width, textBox.height, textBox.radius);
+			ctxt.fillStyle = textBox.backgroundColor;
+			ctxt.fill();
+
+			// Draw border
+			ctxt.lineWidth = textBox.borderWidth;
+			ctxt.strokeStyle = textBox.borderColor;
+			ctxt.stroke();
+
+			// Stylize text
+			ctxt.font = textBox.font;
+			ctxt.fillStyle = textBox.textColor;
+			ctxt.textBaseline = "middle";
+			ctxt.textAlign = "left";
+
+			// Position text
+			const textX = textBox.x + textBox.padding;
+			const textY = textBox.y + textBox.height / 2;
+			ctxt.fillText(textBox.text, textX, textY);
+			ctxt.restore();
+		}
+
+		function updatePaddle(state) {
+			switch (flagKeyDown) {
+				case "leftUp":
+					state["paddles"][0].setDirection("up");
+					state["paddles"][0].move(gameField.height);
+					socket.emit("input", state["sessionId"], "paddleUp", "left");
+					break;
+				case "rightUp":
+					state["paddles"][1].setDirection("up");
+					state["paddles"][1].move(gameField.height);
+					socket.emit("input", state["sessionId"], "paddleUp", "right");
+					break;
+				case "leftDown":
+					state["paddles"][0].setDirection("down");
+					state["paddles"][0].move(gameField.height);
+					socket.emit("input", state["sessionId"], "paddleDown", "left");
+					break;
+				case "rightDown":
+					state["paddles"][1].setDirection("down");
+					state["paddles"][1].move(gameField.height);
+					socket.emit("input", state["sessionId"], "paddleDown", "right");
+					break;
+			}
+
+			switch (flagKeyUp) {
+				case "left":
+					state["paddles"][0].setDirection("");
+					socket.emit("input", state["sessionId"], "", "left");
+					flagKeyUp = "";
+					break;
+				case "right":
+					state["paddles"][1].setDirection("");
+					socket.emit("input", state["sessionId"], "", "right");
+					flagKeyUp = "";
+					break;
+			}
+		}
+
 		function renderCountdown(state=undefined) {
-			const count = game.getCountdown();
+			let count;
+			if (mode === "single") {
+				count = game.getCountdown();
+			} else {
+				count = state["countdown"];
+			}
 			ctxt.font = "60px serif";
 			ctxt.strokeStyle = "white";
 			ctxt.fillStyle = "white";
 			ctxt.clearRect(gameField.width/2-gameField.width/26, gameField.height/2-gameField.height/14, gameField.width/13, gameField.height/7);
 			ctxt.strokeRect(gameField.width/2-gameField.width/26, gameField.height/2-gameField.height/14, gameField.width/13, gameField.height/7);
 			ctxt.fillText(count, gameField.width/2, gameField.height/2);
-		}		
+		}
 
 		function renderPause() {
 			// Draw pause message box (semi-transparent box)
@@ -110,12 +315,12 @@
 
 			// Draw "Continue" button
 			gameField.addEventListener("click", surrender);
-			surrenderBtn = new Button(ctxt, gameField.width/2 - gameField.width/80 - gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
+			surrenderBtn = new Button(ctxt, gameField.width/2-gameField.width/80-gameField.width/8, gameField.height/2, gameField.width/8, gameField.height/8);
 			surrenderBtn.draw("Give Up", "30px serif");
 
 			// Draw "Restart" button
 			gameField.addEventListener("click", unpause);
-			continueBtn = new Button(ctxt, gameField.width/2 + gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
+			continueBtn = new Button(ctxt, gameField.width/2+gameField.width/80, gameField.height/2, gameField.width/8, gameField.height/8);
 			continueBtn.draw("Continue", "30px serif");
 		}
 
@@ -136,8 +341,12 @@
 			if (continueBtn.isClicked(mouseX, mouseY)) {
 				gameField.removeEventListener("click", unpause);
 				gameField.removeEventListener("click", surrender);
-				game.unpause();
-				requestAnimationFrame(draw);
+				if (mode === "single") {
+					game.unpause();
+					requestAnimationFrame(draw);		
+				} else {
+					menuOpened = false;
+				}
 			}
 		}
 
@@ -147,8 +356,13 @@
 			if (surrenderBtn.isClicked(mouseX, mouseY)) {
 				gameField.removeEventListener("click", unpause);
 				gameField.removeEventListener("click", surrender);
-				game.end(0);
-				requestAnimationFrame(draw);
+				if (mode === "single") {
+					game.end(0);
+					requestAnimationFrame(draw);
+				} else {
+					menuOpened = false;
+					socket.emit("surrender", sessionId);
+				}
 			}
 		}
 
@@ -157,19 +371,267 @@
 			mouseY = e.offsetY;
 			if (endRestartBtn.isClicked(mouseX, mouseY)) {
 				gameField.removeEventListener("click", endRestart);
+				if (mode === "single") {					
+					const ball = new Ball(gameField.width/10, gameField.height/2, 11, 0);
+					const leftPad = new Paddle(10, gameField.height/2-75, 25, 150, "", "left");
+					const rightPad = new Paddle(gameField.width-35, gameField.height/2-75, 25, 150, "", "right");
+					leftPad.registerKeys("q", "a");
+					rightPad.registerKeys("p", "l");
 
-				const ball = new Ball(gameField.width/10, gameField.height/2, 11, 0);
-				const leftPad = new Paddle(10, gameField.height/2-75, 25, 150, "", "left");
-				const rightPad = new Paddle(gameField.width-35, gameField.height/2-75, 25, 150, "", "right");
-				leftPad.registerKeys("q", "a");
-				rightPad.registerKeys("p", "l");
+					const balls = [ball];
+					const paddles = [leftPad, rightPad];
+					game = new Game(mode, 0, balls, paddles, gameField.width, gameField.height);
+					game.start();
 
-				const balls = [ball];
-				const paddles = [leftPad, rightPad];
-				game = new Game("single", 0, balls, paddles, gameField.width, gameField.height);
-				game.start();
+					requestAnimationFrame(draw);
+				} else {
+					socket.emit("restart", sessionId, { 
+						"width": gameField.width,
+						"height": gameField.height
+					});
+				}
+			}
+		}
 
-				requestAnimationFrame(draw);
+		function deJSON(state) {
+			const newGameState = {
+    			"sessionId": state["sessionId"],
+				"score": state["score"],
+				"countdown": state["countdown"],
+    			"players": state["players"],
+				"balls": [],
+				"paddles": [],
+				"started": state["started"]
+			};
+
+			for (const ball of state["balls"]) {
+				const newBall = new Ball(ball.x, ball.y, ball.vx, ball.vy);
+				newGameState["balls"].push(newBall);
+			}
+
+			for (const paddle of state["paddles"]) {
+				const newPaddle = new Paddle(paddle.x, paddle.y, paddle.width, paddle.height, paddle.direction, paddle.type);
+				newGameState["paddles"].push(newPaddle);
+			}
+
+			return newGameState;
+		}
+
+		function handleGameInitilization(initState, whichSide) {
+			gameField.removeEventListener("click", start);
+			gameField.removeEventListener("click", endRestart);
+			gameField.removeEventListener("click", handleClickTextBox);
+			document.removeEventListener("keydown", handleEnterTextBox);
+
+			flagKeyUp = "";
+			flagKeyDown = "";
+			side = whichSide;
+			mode = "multi";
+
+			const gameState = deJSON(initState);
+			sessionId = gameState["sessionId"];
+
+			if (side === "left") {
+				upKey = "q";
+				downKey = "a";
+			}
+
+			if (side === "right") {
+				upKey = "p";
+				downKey = "l";
+			}
+
+			document.addEventListener("keydown", handleKeyDown);
+			document.addEventListener("keyup", handleKeyUp);
+
+			buffer = [{"state": gameState, "timestamp": performance.now() }];
+			// Push duplicate so that first frame renders
+			buffer.push({"state": gameState, "timestamp": performance.now() });
+			lastTime = performance.now();
+			drawMulti();
+		}
+
+		function handleGameLoop(jsonState) {
+			buffer.push({ "state": deJSON(jsonState), "timestamp": performance.now() });
+			lastTime = performance.now();
+			requestAnimationFrame(drawMulti);
+		}
+
+		function handleGameEnd(whoWon) {
+			menuOpened = false;
+			requestAnimationFrame(drawMulti);
+
+			document.removeEventListener("keydown", handleKeyDown);
+			document.removeEventListener("keyup", handleKeyUp);
+			ctxt.font = "48px serif";
+			ctxt.fillStyle = "white";
+			ctxt.textAlign = "center";
+			if (whoWon == 1) {
+				ctxt.fillText("Player 1 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
+			} else {
+				ctxt.fillText("Player 2 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
+			}
+			gameField.addEventListener("click", endRestart);
+			endRestartBtn = new Button(ctxt, gameField.width/2-gameField.width/12, gameField.height/2, gameField.width/6, gameField.height/8);
+			endRestartBtn.draw("Re-challenge", "30px serif");
+		}
+
+		function handleClickTextBox(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
+			if (mouseX >= textBox.x &&
+				mouseX <= textBox.x + textBox.width &&
+				mouseY >= textBox.y &&
+				mouseY <= textBox.y + textBox.height) {
+				gameField.style.cursor = "text";
+				seedTextBox.style.left = `${textBox.x}px`;
+				seedTextBox.style.top = `${textBox.y}px`;
+				seedTextBox.style.width = `${textBox.width}px`;
+				seedTextBox.style.height = `${textBox.height}px`;
+				seedTextBox.style.font = textBox.font;
+				seedTextBox.style.color = textBox.textColor;
+
+				seedTextBox.value = textBox.text;
+				seedTextBox.style.display = "block";
+				seedTextBox.focus();
+			}
+		}
+
+		function handleEnterTextBox(e) {
+			if (e.key === "Enter") {
+				if (seedTextBox.style.display != "none") { 
+					textBox.text = seedTextBox.value;
+					gameField.style.cursor = "auto";
+					seedTextBox.style.display = "none";
+					drawTextBox();
+				}
+			}
+		}
+
+		function handleKeyDown(e) {
+			if (!currState) { return; }
+			if (e.key === upKey) {
+				if (side === "left") {
+					flagKeyDown = "leftUp";
+				}
+				if (side === "right") {
+					flagKeyDown = "rightUp";
+				}
+			}
+
+			if (e.key === downKey) {
+				if (side === "left") {
+					flagKeyDown = "leftDown";
+				}
+				if (side === "right") {
+					flagKeyDown = "rightDown";
+				}
+			}
+
+			if (e.key === "Escape") {
+				if (!menuOpened && currState["started"]) {
+					menuOpened = true;
+					surrenderBtn = new Button(ctxt, gameField.width/2-gameField.width/80-gameField.width/8, gameField.height/2-gameField.height/20, gameField.width/8, gameField.height/8);
+					continueBtn = new Button(ctxt, gameField.width/2+gameField.width/80, gameField.height/2-gameField.height/20, gameField.width/8, gameField.height/8);
+					gameField.addEventListener("click", surrender);
+					gameField.addEventListener("click", unpause);
+					console.log("Menu opened");
+					requestAnimationFrame(drawMulti);
+				} else if (menuOpened && currState["started"]) {
+					menuOpened = false;
+					gameField.removeEventListener("click", surrender);
+					gameField.removeEventListener("click", unpause);
+					console.log("Menu closed");
+					requestAnimationFrame(drawMulti);
+				} else {
+					return;
+				}
+			}
+		}
+
+		function handleKeyUp(e) {
+			if (!currState) { return; }
+			if (e.key === upKey || e.key === downKey) {
+				flagKeyDown = "";
+				if (side === "left") {
+					flagKeyUp = "left";
+				}
+				if (side === "right") {
+					flagKeyUp = "right";
+				}
+			}
+		}
+
+		function start(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
+
+			if (startMultiBtn.isClicked(mouseX, mouseY)) {
+				socket.emit("seed check", parseInt(seedTextBox.value, 10), { "width": gameField.width, "height": gameField.height });
+			}
+		}
+
+		async function startMulti(e) {
+			mouseX = e.offsetX;
+			mouseY = e.offsetY;
+
+			if (playMultiBtn.isClicked(mouseX, mouseY)) {
+				ctxt.clearRect(0, 0, gameField.width, gameField.height);
+				gameField.removeEventListener("click", startSolo);
+				gameField.removeEventListener("click", startMulti);
+
+				startMultiBtn = new Button(ctxt, gameField.width/2-gameField.width/20, gameField.height/2+gameField.height/8, 
+					gameField.width/10, gameField.height/8);
+				gameField.addEventListener("click", start);
+				startMultiBtn.draw("Start", "30px serif");
+
+				drawTextBox();
+				gameField.addEventListener("click", handleClickTextBox);
+				document.addEventListener("keydown", handleEnterTextBox);
+
+				try {
+					const res = await fetch(process.env.CLOUD_FUNCTION_URL, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ action: "start" })
+					});
+
+					if (res.ok) {
+						ctxt.fillText("Server ready", gameField.width/2, gameField.height-gameField.height/20);
+
+						socket = io(process.env.SERVER_URL, {
+							auth: {
+								seed: 0
+							}
+						});
+
+						socket.on("gen seed", (seed) => {
+							ctxt.fillText("Your seed: " + seed, gameField.width/2, gameField.height/2-gameField.height/5);
+						});
+
+						socket.on("invalid seed", () => {
+							ctxt.clearRect(gameField.width/2, gameField.height/2+gameField.height/5-30, gameField.width, 30);
+							ctxt.fillText("Incorrect seed. Please try again!", gameField.width/2, gameField.height/2+gameField.height/5);
+						});
+
+						socket.on("init game", (initState, whichSide) => {
+							handleGameInitilization(initState, whichSide);
+						});
+
+						socket.on("game", (jsonState) => {
+							handleGameLoop(jsonState);
+						});
+
+						socket.on("winner", (whoWon) => {
+							handleGameEnd(whoWon);
+						});
+					} else {
+						console.log(res.status);
+						ctxt.fillText("Failed to start server. Refresh page and try again.", gameField.width/2, 570);
+					}
+				} catch (err) {
+					console.error(err);
+				}
 			}
 		}
 
@@ -179,6 +641,7 @@
 
 			if (playSoloBtn.isClicked(mouseX, mouseY)) {
 				gameField.removeEventListener("click", startSolo);
+				gameField.removeEventListener("click", startMulti);
 
 				const ball = new Ball(gameField.width/10, gameField.height/2, 11, 0);
 				const leftPad = new Paddle(0, gameField.height/2-75, 25, 150, "", "left");
@@ -188,7 +651,8 @@
 
 				const balls = [ball];
 				const paddles = [leftPad, rightPad];
-				game = new Game("single", 0, balls, paddles, gameField.width, gameField.height);
+				mode = "single";
+				game = new Game(mode, 0, balls, paddles, gameField.width, gameField.height);
 				game.start();
 
 				document.addEventListener("keydown", (e) => {
@@ -203,10 +667,19 @@
 
 		// Controls start screen
 		function init() {
-			playSoloBtn = new Button(ctxt, gameField.width/2-gameField.width/16, gameField.height/2, 
-				gameField.width/8, gameField.height/8);
+			playSoloBtn = new Button(ctxt, gameField.width/2-gameField.width/8, gameField.height/2, 
+				gameField.width/10, gameField.height/8);		
+			playMultiBtn = new Button(ctxt, gameField.width/2+gameField.width/40, gameField.height/2, 
+				gameField.width/10, gameField.height/8);
 			gameField.addEventListener("click", startSolo);
-			playSoloBtn.draw("Play (Solo)", "30px serif");
+			try {
+				gameField.addEventListener("click", startMulti);
+			} catch (err) {
+
+			}
+			gameField.addEventListener("click", startSolo);
+			playSoloBtn.draw("Solo", "30px serif");
+			playMultiBtn.draw("Multi", "30px serif");
 
 			ctxt.font = "48px serif";
 			ctxt.fillStyle = "white";
