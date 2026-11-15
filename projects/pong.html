@@ -165,7 +165,19 @@
 			// Draw score
 			ctxt.font = "30px serif";
 			ctxt.fillStyle = "white";
-			ctxt.fillText("Score: " + currState["score"], gameField.width-gameField.width/10, gameField.height/10);
+			ctxt.save();
+			if (side === "left") {
+				ctxt.textAlign = "left";
+				ctxt.fillText("You", gameField.width/50, gameField.height/15);
+				ctxt.textAlign = "right";
+				ctxt.fillText("Opponent", gameField.width-gameField.width/50, gameField.height/15);
+			} else {
+				ctxt.textAlign = "right";
+				ctxt.fillText("You", gameField.width-gameField.width/50, gameField.height/15);
+				ctxt.textAlign = "left";
+				ctxt.fillText("Opponent", gameField.width/50, gameField.height/15);
+			}
+			ctxt.restore();
 
 			// Update paddle positions
 			updatePaddle(currState);
@@ -469,10 +481,10 @@
 			ctxt.font = "48px serif";
 			ctxt.fillStyle = "white";
 			ctxt.textAlign = "center";
-			if (whoWon == 1) {
-				ctxt.fillText("Player 1 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
+			if (whoWon === "you") {
+				ctxt.fillText("You win!", gameField.width/2, gameField.height/2-gameField.height/10);
 			} else {
-				ctxt.fillText("Player 2 wins!", gameField.width/2, gameField.height/2-gameField.height/10);
+				ctxt.fillText("You lose.", gameField.width/2, gameField.height/2-gameField.height/10);
 			}
 			gameField.addEventListener("click", endRestart);
 			endRestartBtn = new Button(ctxt, gameField.width/2-gameField.width/12, gameField.height/2, gameField.width/6, gameField.height/8);
